@@ -106,15 +106,15 @@ sudo chown -R $USER:$USER /var/lib/it-pr-dms/storage
 4. Restore app release and `.env`.
 
 ```bash
-ln -sfn /opt/it-pr-dms/shared/.env /opt/it-pr-dms/current/.env
-ln -sfn /var/lib/it-pr-dms/storage /opt/it-pr-dms/current/storage
+ln -sfn /var/www/it-pr-dms/shared/.env /var/www/it-pr-dms/current/.env
+ln -sfn /var/lib/it-pr-dms/storage /var/www/it-pr-dms/current/storage
 ```
 
 5. Validate.
 
 ```bash
 npx prisma migrate status
-pm2 startOrReload /opt/it-pr-dms/current/ecosystem.config.cjs --env production
+pm2 startOrReload /var/www/it-pr-dms/current/ecosystem.config.cjs --env production
 sudo systemctl start nginx
 ```
 

@@ -96,7 +96,7 @@ npm run dev
 npm run dev -- --port 3001
 ```
 
-Restart the running Next.js process after changing the port. For Ubuntu/nginx/PM2, update `PORT` in `/opt/it-pr-dms/shared/.env`, update the nginx upstream port in `deploy/nginx/it-pr-dms.conf`, then reload PM2 and nginx.
+Restart the running Next.js process after changing the port. For Ubuntu/nginx/PM2, update `PORT` in `/var/www/it-pr-dms/shared/.env`, update the nginx upstream port in `deploy/nginx/it-pr-dms.conf`, then reload PM2 and nginx.
 
 ## Local Login
 

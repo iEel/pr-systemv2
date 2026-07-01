@@ -22,6 +22,7 @@ describe("Phase 5 hardening documentation and config", () => {
     const envExample = read(".env.example");
 
     expect(pm2).toContain('name: "it-pr-dms"');
+    expect(pm2).toContain('cwd: "/var/www/it-pr-dms/current"');
     expect(pm2).toContain("127.0.0.1");
     expect(pm2).toContain("dotenv.config");
     expect(pm2).toContain("process.env.PORT");
@@ -35,6 +36,8 @@ describe("Phase 5 hardening documentation and config", () => {
     expect(nginx).toContain("client_max_body_size 25m");
     expect(nginx).toContain("Keep this port in sync with PORT");
     expect(nginx).toContain("proxy_pass http://it_pr_dms_next");
+    expect(read("docs/DEPLOYMENT_UBUNTU_NGINX_PM2.md")).toContain("/var/www/it-pr-dms/current");
+    expect(read("docs/BACKUP_RESTORE.md")).toContain("/var/www/it-pr-dms/current/.env");
   });
 
   test("documents backup, restore, retention, monitoring, and Carbone handling", () => {

@@ -35,9 +35,9 @@ npm install -g pm2
 Recommended:
 
 ```text
-/opt/it-pr-dms/current          -> symlink to active release
-/opt/it-pr-dms/releases/<build> - app release directories
-/opt/it-pr-dms/shared/.env      - production secrets
+/var/www/it-pr-dms/current          -> symlink to active release
+/var/www/it-pr-dms/releases/<build> - app release directories
+/var/www/it-pr-dms/shared/.env      - production secrets
 /var/lib/it-pr-dms/storage      - persistent document storage
 /var/backups/it-pr-dms          - local backup staging
 /var/log/it-pr-dms              - PM2 app logs
@@ -46,14 +46,14 @@ Recommended:
 Create folders:
 
 ```bash
-sudo mkdir -p /opt/it-pr-dms/releases /opt/it-pr-dms/shared /var/lib/it-pr-dms/storage /var/backups/it-pr-dms /var/log/it-pr-dms
-sudo chown -R $USER:$USER /opt/it-pr-dms /var/lib/it-pr-dms /var/backups/it-pr-dms /var/log/it-pr-dms
+sudo mkdir -p /var/www/it-pr-dms/releases /var/www/it-pr-dms/shared /var/lib/it-pr-dms/storage /var/backups/it-pr-dms /var/log/it-pr-dms
+sudo chown -R $USER:$USER /var/www/it-pr-dms /var/lib/it-pr-dms /var/backups/it-pr-dms /var/log/it-pr-dms
 ```
 
 Copy `.env` to:
 
 ```text
-/opt/it-pr-dms/shared/.env
+/var/www/it-pr-dms/shared/.env
 ```
 
 Do not commit or paste real secrets into source control.
@@ -64,7 +64,7 @@ From the built release directory:
 
 ```bash
 npm ci
-ln -sfn /opt/it-pr-dms/shared/.env .env
+ln -sfn /var/www/it-pr-dms/shared/.env .env
 rm -rf storage
 ln -sfn /var/lib/it-pr-dms/storage storage
 npx prisma generate
@@ -75,8 +75,8 @@ npm run build
 Activate the release:
 
 ```bash
-ln -sfn /opt/it-pr-dms/releases/<build> /opt/it-pr-dms/current
-pm2 startOrReload /opt/it-pr-dms/current/ecosystem.config.cjs --env production
+ln -sfn /var/www/it-pr-dms/releases/<build> /var/www/it-pr-dms/current
+pm2 startOrReload /var/www/it-pr-dms/current/ecosystem.config.cjs --env production
 pm2 save
 ```
 
@@ -107,7 +107,7 @@ sudo systemctl reload nginx
 
 Update `server_name` and add TLS before production. For HTTPS, terminate TLS at nginx and keep PM2 bound to `127.0.0.1:<PORT>`.
 
-If you change the app port, set `PORT` in `/opt/it-pr-dms/shared/.env` and update the upstream server line in `deploy/nginx/it-pr-dms.conf` to the same port:
+If you change the app port, set `PORT` in `/var/www/it-pr-dms/shared/.env` and update the upstream server line in `deploy/nginx/it-pr-dms.conf` to the same port:
 
 ```text
 PORT=3001
@@ -117,7 +117,7 @@ server 127.0.0.1:3001;
 Then reload both services:
 
 ```bash
-pm2 startOrReload /opt/it-pr-dms/current/ecosystem.config.cjs --env production
+pm2 startOrReload /var/www/it-pr-dms/current/ecosystem.config.cjs --env production
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -160,8 +160,8 @@ Browser checks:
 Rollback swaps the active symlink and reloads PM2:
 
 ```bash
-ln -sfn /opt/it-pr-dms/releases/<previous-build> /opt/it-pr-dms/current
-pm2 startOrReload /opt/it-pr-dms/current/ecosystem.config.cjs --env production
+ln -sfn /var/www/it-pr-dms/releases/<previous-build> /var/www/it-pr-dms/current
+pm2 startOrReload /var/www/it-pr-dms/current/ecosystem.config.cjs --env production
 pm2 save
 ```
 

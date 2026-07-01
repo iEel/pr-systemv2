@@ -49,6 +49,7 @@ Completed:
 - Phase 5 baseline hardening runbooks and deployment scaffolds for Ubuntu, nginx, PM2, backup/restore, monitoring, rate limiting, retention, and Carbone incidents.
 - Carbone client errors are now classified as config, HTTP, network, or timeout with safe user-facing messages instead of leaking long render response bodies.
 - Source-control hygiene is set for GitHub publishing: environment files, build output, local QA captures, and runtime document storage are ignored, while seed templates under `storage/templates/` remain tracked for tests and first-run setup.
+- Ubuntu/nginx/PM2 deployment uses `/var/www/it-pr-dms/current` as the active release path, with runtime document storage kept outside the web root at `/var/lib/it-pr-dms/storage`.
 - App listen port is documented as `PORT=3000` in `.env.example`; PM2 loads `.env` before starting Next.js, and nginx upstream must be kept in sync when changing ports.
 - Production UI copy no longer labels the connected app as Phase 1 sample data; PR list filtering now uses `lib/pr-filters.ts` instead of `lib/sample-data.ts`.
 

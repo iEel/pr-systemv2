@@ -9,7 +9,7 @@ module.exports = {
   apps: [
     {
       name: "it-pr-dms",
-      cwd: "/opt/it-pr-dms/current",
+      cwd: "/var/www/it-pr-dms/current",
       script: "node_modules/next/dist/bin/next",
       args: `start --hostname 127.0.0.1 --port ${appPort}`,
       exec_mode: "fork",
