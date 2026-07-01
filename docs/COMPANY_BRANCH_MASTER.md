@@ -44,6 +44,8 @@ Storage location:
 
 The app keeps only the storage path in SQL Server. At PR generation time it reads the file, builds a Base64 Data URI for payload compatibility, and also patches the DOCX package directly so the placeholder header/footer images are replaced before Carbone renders the PDF.
 
+The current branch header/footer baseline image files are kept in source control under `storage/company-assets/<branchId>/header|footer` so a fresh checkout can render the known document profiles. Production replacements remain operational data and should be covered by the storage backup process.
+
 ## Editing And Preview
 
 Admins can edit a branch document profile inline from `/masters/companies`:

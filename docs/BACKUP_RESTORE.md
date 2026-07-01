@@ -24,7 +24,9 @@ Storage:
 - `storage/signed`
 - `storage/quotations`
 - `storage/template-previews`
-- Any branch header/footer assets under storage.
+- Branch header/footer assets under `storage/company-assets`.
+
+Baseline branch header/footer images are source-controlled for first-run setup, but backup jobs must still include `storage/company-assets` because production users can replace assets after deployment.
 
 Transient and review artifacts:
 

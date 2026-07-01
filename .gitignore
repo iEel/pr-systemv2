@@ -19,7 +19,12 @@ storage/generated/
 storage/signed/
 storage/quotations/
 storage/template-previews/
-storage/company-assets/
+storage/company-assets/*
+!storage/company-assets/*/
+!storage/company-assets/*/header.png
+!storage/company-assets/*/header.jpg
+!storage/company-assets/*/footer.png
+!storage/company-assets/*/footer.jpg
 storage/generated-test.pdf
 
 .superpowers/

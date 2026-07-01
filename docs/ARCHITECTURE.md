@@ -41,7 +41,7 @@ The application is a server-heavy Next.js App Router app. UI routes are mostly s
 | `lib/user-management.ts` | User admin filters, role validation, create/update, password reset, self-protection, and audit logging. |
 | `lib/running-number-settings.ts` | Running-number validation, scope checks, preview formatting, create/update, and audit logging. |
 | `prisma/` | SQL Server schema, migrations, seed script. |
-| `storage/` | Local generated runtime files: templates, generated PDFs, signed uploads, company assets. |
+| `storage/` | Local document files: source-controlled templates/company asset baselines plus generated PDFs, signed uploads, quotations, and previews. |
 | `tests/` | Vitest tests for pure helpers and command contracts. |
 | `docs/` | Developer documentation. |
 
@@ -146,7 +146,7 @@ See [DOCUMENT_GENERATION.md](DOCUMENT_GENERATION.md) for the full Carbone payloa
 - Quotation/supporting files are stored under `storage/quotations`.
 - Template originals are stored under `storage/templates`.
 - Template preview PDFs are stored under `storage/template-previews`.
-- Company assets are stored under `storage/company-assets`.
+- Company assets are stored under `storage/company-assets`; baseline branch header/footer images are tracked in source control, while production replacements remain operational data.
 - PDF QA artifacts are written under `output/pdf-qa`.
 
 Production can swap the underlying folder to a network path, but the same safe relative-path metadata model should remain.

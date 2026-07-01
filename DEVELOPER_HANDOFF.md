@@ -30,6 +30,7 @@ Completed:
 - Branch/company document profile fields, including legal name, tax ID, address, Ref No., and uploaded header/footer images.
 - Header/footer image upload, preview, replace, and remove flows in `/masters/companies`.
 - DOCX template patching before render so branch header/footer images replace placeholder images in the Word file.
+- Branch header/footer baseline images under `storage/company-assets/<branchId>/header|footer` are source-controlled so fresh clones can render the known document profiles.
 - Draft Preview PDF flow that renders a temporary PDF without assigning a PR number or changing status.
 - Official Issue PR flow that assigns the PR number, stores snapshot JSON, writes generated PDF metadata/hash, and moves the PR to `GENERATED`.
 - PDF preview/download route for issued generated documents, guarded by `PR_GENERATE` and status-aware JSON error handling.
@@ -48,7 +49,7 @@ Completed:
 - SQL Server-backed Running Number Settings admin at `/settings/running-numbers`, including create, update, next-number preview, `RUNNING_NUMBER_MANAGE`, and audit events.
 - Phase 5 baseline hardening runbooks and deployment scaffolds for Ubuntu, nginx, PM2, backup/restore, monitoring, rate limiting, retention, and Carbone incidents.
 - Carbone client errors are now classified as config, HTTP, network, or timeout with safe user-facing messages instead of leaking long render response bodies.
-- Source-control hygiene is set for GitHub publishing: environment files, build output, local QA captures, and runtime document storage are ignored, while seed templates under `storage/templates/` remain tracked for tests and first-run setup.
+- Source-control hygiene is set for GitHub publishing: environment files, build output, local QA captures, and generated runtime document storage are ignored, while seed templates under `storage/templates/` and branch header/footer baselines under `storage/company-assets/` remain tracked for tests and first-run setup.
 - Ubuntu/nginx/PM2 deployment uses `/var/www/it-pr-dms/current` as the active release path, with runtime document storage kept outside the web root at `/var/lib/it-pr-dms/storage`.
 - App listen port is documented as `PORT=3000` in `.env.example`; PM2 loads `.env` before starting Next.js, and nginx upstream must be kept in sync when changing ports.
 - Production UI copy no longer labels the connected app as Phase 1 sample data; PR list filtering now uses `lib/pr-filters.ts` instead of `lib/sample-data.ts`.

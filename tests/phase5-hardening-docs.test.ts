@@ -43,9 +43,24 @@ describe("Phase 5 hardening documentation and config", () => {
   test("documents backup, restore, retention, monitoring, and Carbone handling", () => {
     expect(read("docs/BACKUP_RESTORE.md")).toContain("SQL Server database `IT_PR_DMS`");
     expect(read("docs/BACKUP_RESTORE.md")).toContain("/var/lib/it-pr-dms/storage");
+    expect(read("docs/BACKUP_RESTORE.md")).toContain("storage/company-assets");
     expect(read("docs/RETENTION_POLICY.md")).toContain("7 years minimum");
     expect(read("docs/OPERATIONS_RUNBOOK.md")).toContain("Carbone Incident Handling");
     expect(read("docs/OPERATIONS_RUNBOOK.md")).toContain("Rate Limiting");
     expect(read("docs/DEPLOYMENT_UBUNTU_NGINX_PM2.md")).toContain("pm2 startOrReload");
+  });
+
+  test("keeps branch document image baselines source-controlled", () => {
+    const ignore = read(".gitignore");
+    const setup = read("docs/SETUP.md");
+    const companyMaster = read("docs/COMPANY_BRANCH_MASTER.md");
+
+    expect(ignore).toContain("storage/company-assets/*");
+    expect(ignore).toContain("!storage/company-assets/*/header.png");
+    expect(ignore).toContain("!storage/company-assets/*/footer.png");
+    expect(setup).toContain("branch document image baselines");
+    expect(companyMaster).toContain("source control under `storage/company-assets/<branchId>/header|footer`");
+    expect(read("storage/company-assets/br_sonic04/header.png").length).toBeGreaterThan(0);
+    expect(read("storage/company-assets/br_sonic04/footer.png").length).toBeGreaterThan(0);
   });
 });

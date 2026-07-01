@@ -139,11 +139,11 @@ The following are local/generated and should not be committed:
 - `storage/signed/`
 - `storage/quotations/`
 - `storage/template-previews/`
-- uploaded runtime files under `storage/company-assets/`
+- uploaded runtime files under `storage/company-assets/` except source-controlled branch `header` and `footer` JPG/PNG baseline images
 
 These are covered by `.gitignore`.
 
-The seed document templates under `storage/templates/` are source-controlled because local tests and first-run template records expect them to exist. Production/UAT document storage is still operational data and must be covered by the backup/restore runbook.
+The seed document templates under `storage/templates/` and branch document image baselines under `storage/company-assets/<branchId>/header|footer` are source-controlled because local tests, seeded document profiles, and first-run document rendering expect them to exist. Production/UAT document storage is still operational data and must be covered by the backup/restore runbook.
 
 ## Troubleshooting
 
