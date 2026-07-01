@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid()) @db.NVarChar(30)
+  username         String   @unique @db.NVarChar(80)
+  displayName      String   @db.NVarChar(160)
+  email            String?  @unique @db.NVarChar(220)
+  passwordHash String?  @db.NVarChar(255)
+  authProvider String   @default("LOCAL") @db.NVarChar(20)
+  externalUsername String?  @db.NVarChar(160)
+  externalId String?  @db.NVarChar(160)
+  lastLoginAt DateTime?
+  role             String   @default("IT_USER") @db.NVarChar(40)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  createdPurchaseRequests PurchaseRequest[]       @relation("PurchaseRequestCreator")
+  uploadedAttachments     PurchaseRequestAttachment[]
+  createdTemplates        DocumentTemplate[]
+  auditLogs               AuditLog[]
+
+  @@index([externalId])
+}
+
+model Company {
+  id          String   @id @default(cuid()) @db.NVarChar(30)
+  code        String   @unique @db.NVarChar(40)
+  legalName   String   @db.NVarChar(240)
+  displayName String   @db.NVarChar(160)
+  taxId       String?  @db.NVarChar(40)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  branches         Branch[]
+  budgets          Budget[]
+  purchaseRequests PurchaseRequest[]
+}
+
+model Branch {
+  id                      String   @id @default(cuid()) @db.NVarChar(30)
+  companyId               String @db.NVarChar(30)
+  code                    String   @db.NVarChar(40)
+  name                    String   @db.NVarChar(160)
+  address                 String?  @db.NVarChar(500)
+  documentRefNo           String?  @db.NVarChar(80)
+  documentLegalName       String?  @db.NVarChar(240)
+  documentTaxId           String?  @db.NVarChar(40)
+  documentAddress         String?  @db.NVarChar(500)
+  documentDisplayName     String?  @db.NVarChar(160)
+  documentHeaderAssetPath String?  @db.NVarChar(260)
+  documentFooterAssetPath String?  @db.NVarChar(260)
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  budgets          Budget[]
+  purchaseRequests PurchaseRequest[]
+
+  @@unique([companyId, code])
+}
+
+model Department {
+  id        String   @id @default(cuid()) @db.NVarChar(30)
+  name      String   @unique @db.NVarChar(160)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  divisions        Division[]
+  budgets          Budget[]
+  purchaseRequests PurchaseRequest[]
+}
+
+model Division {
+  id           String   @id @default(cuid()) @db.NVarChar(30)
+  departmentId String @db.NVarChar(30)
+  name         String   @db.NVarChar(160)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department       Department        @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  purchaseRequests PurchaseRequest[]
+
+  @@unique([departmentId, name])
+}
+
+model Budget {
+  id             String   @id @default(cuid()) @db.NVarChar(30)
+  year           Int
+  companyId      String @db.NVarChar(30)
+  branchId       String? @db.NVarChar(30)
+  departmentId   String @db.NVarChar(30)
+  budgetAmount   Decimal  @db.Decimal(18, 2)
+  usedAmount     Decimal  @default(0) @db.Decimal(18, 2)
+  reservedAmount Decimal  @default(0) @db.Decimal(18, 2)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  branch     Branch?    @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([year, companyId, branchId, departmentId])
+}
+
+model PurchaseRequest {
+  id                    String   @id @default(cuid()) @db.NVarChar(30)
+  prNo                  String?   @db.NVarChar(40)
+  refNo                 String?   @db.NVarChar(80)
+  companyId             String @db.NVarChar(30)
+  branchId              String @db.NVarChar(30)
+  departmentId          String @db.NVarChar(30)
+  divisionId            String? @db.NVarChar(30)
+  documentDate          DateTime
+  requiredDate          DateTime?
+  purpose               String    @db.NVarChar(120)
+  purchaseMethod        String    @db.NVarChar(120)
+  remark                String?   @db.NVarChar(1000)
+  subtotal              Decimal   @default(0) @db.Decimal(18, 2)
+  vatRate               Decimal   @default(7) @db.Decimal(5, 2)
+  vatAmount             Decimal   @default(0) @db.Decimal(18, 2)
+  totalAmount           Decimal   @default(0) @db.Decimal(18, 2)
+  status                String    @default("DRAFT") @db.NVarChar(40)
+  templateVersionId     String? @db.NVarChar(30)
+  generatedSnapshotJson String?   @db.NVarChar(Max)
+  createdById           String @db.NVarChar(30)
+  generatedAt           DateTime?
+  printedAt             DateTime?
+  signedAt              DateTime?
+  cancelledAt           DateTime?
+  reissuedFromId        String? @db.NVarChar(30)
+  clonedFromId          String? @db.NVarChar(30)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  company             Company                     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  branch              Branch                      @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department          Department                  @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  division            Division?                   @relation(fields: [divisionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  templateVersion     DocumentTemplate?           @relation(fields: [templateVersionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy           User                        @relation("PurchaseRequestCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reissuedFrom        PurchaseRequest?            @relation("PurchaseRequestReissue", fields: [reissuedFromId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reissuedChildren    PurchaseRequest[]           @relation("PurchaseRequestReissue")
+  clonedFrom          PurchaseRequest?            @relation("PurchaseRequestClone", fields: [clonedFromId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clonedChildren      PurchaseRequest[]           @relation("PurchaseRequestClone")
+  items               PurchaseRequestItem[]
+  attachments         PurchaseRequestAttachment[]
+}
+
+model PurchaseRequestItem {
+  id                String   @id @default(cuid()) @db.NVarChar(30)
+  purchaseRequestId String @db.NVarChar(30)
+  lineNo            Int
+  accountCode       String  @db.NVarChar(80)
+  description       String  @db.NVarChar(500)
+  quantity          Decimal @db.Decimal(18, 4)
+  unitCost          Decimal @db.Decimal(18, 2)
+  totalAmount       Decimal @db.Decimal(18, 2)
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([purchaseRequestId, lineNo])
+}
+
+model PurchaseRequestAttachment {
+  id                String   @id @default(cuid()) @db.NVarChar(30)
+  purchaseRequestId String @db.NVarChar(30)
+  type              String         @db.NVarChar(60)
+  version           Int            @default(1)
+  fileName          String         @db.NVarChar(260)
+  mimeType          String         @db.NVarChar(120)
+  fileSize          Int
+  storagePath       String         @db.NVarChar(500)
+  sha256            String         @db.NVarChar(64)
+  uploadedById      String @db.NVarChar(30)
+  uploadedAt        DateTime       @default(now())
+
+  purchaseRequest PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  uploadedBy      User            @relation(fields: [uploadedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([purchaseRequestId, type, version])
+}
+
+model DocumentTemplate {
+  id             String   @id @default(cuid()) @db.NVarChar(30)
+  name           String         @db.NVarChar(120)
+  version        String         @db.NVarChar(40)
+  templateType   String         @default("DOCX") @db.NVarChar(20)
+  contractName   String         @db.NVarChar(160)
+  status         String   @default("DRAFT") @db.NVarChar(40)
+  fileName       String         @db.NVarChar(260)
+  storagePath    String         @db.NVarChar(500)
+  validationJson String?        @db.NVarChar(Max)
+  createdById    String @db.NVarChar(30)
+  createdAt      DateTime       @default(now())
+  activatedAt    DateTime?
+  archivedAt     DateTime?
+
+  createdBy        User              @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  purchaseRequests PurchaseRequest[]
+
+  @@unique([name, version, templateType])
+}
+
+model RunningNumberSetting {
+  id             String   @id @default(cuid()) @db.NVarChar(30)
+  documentType   String   @db.NVarChar(40)
+  prefix         String   @db.NVarChar(40)
+  yearFormat     String   @db.NVarChar(20)
+  monthFormat    String   @db.NVarChar(20)
+  padding        Int      @default(4)
+  currentValue   Int      @default(0)
+  scopeCompanyId String? @db.NVarChar(30)
+  scopeBranchId  String? @db.NVarChar(30)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([documentType, scopeCompanyId, scopeBranchId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid()) @db.NVarChar(30)
+  entityType   String   @db.NVarChar(80)
+  entityId     String   @db.NVarChar(80)
+  action       String   @db.NVarChar(120)
+  actorId      String? @db.NVarChar(30)
+  metadataJson String?  @db.NVarChar(Max)
+  ipAddress    String?  @db.NVarChar(80)
+  userAgent    String?  @db.NVarChar(500)
+  createdAt    DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

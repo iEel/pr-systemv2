@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Segoe UI", "Noto Sans Thai", "Leelawadee UI", system-ui, sans-serif;
+  --shell: 0.27 0.104 257;
+  --panel: 1 0 0;
+  --surface: 0.972 0.006 247;
+  --ink: 0.24 0.06 255;
+  --muted: 0.47 0.035 250;
+  --border: 0.89 0.018 248;
+  --primary: 0.46 0.14 255;
+  --info: 0.58 0.14 250;
+  --success: 0.56 0.13 158;
+  --warning: 0.72 0.16 72;
+  --danger: 0.58 0.17 25;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  color: oklch(var(--ink));
+  background: oklch(var(--surface));
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at top right, rgb(37 99 235 / 0.07), transparent 34rem),
+    oklch(var(--surface));
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid oklch(var(--primary));
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 50;
+  transform: translateY(-200%);
+  border-radius: 0.5rem;
+  background: oklch(var(--panel));
+  padding: 0.75rem 1rem;
+  color: oklch(var(--ink));
+  font-weight: 700;
+  box-shadow: 0 14px 30px rgb(15 38 80 / 0.16);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
