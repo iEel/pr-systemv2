@@ -9,7 +9,7 @@ This runbook is the baseline deployment path for UAT and the first production re
 ```text
 Browser / LAN
   -> nginx :80/:443
-  -> Next.js production server on 127.0.0.1:3000
+  -> Next.js production server on 127.0.0.1:${PORT:-3000}
   -> SQL Server IT_PR_DMS
   -> Carbone service
   -> persistent local storage
@@ -105,13 +105,29 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Update `server_name` and add TLS before production. For HTTPS, terminate TLS at nginx and keep PM2 bound to `127.0.0.1:3000`.
+Update `server_name` and add TLS before production. For HTTPS, terminate TLS at nginx and keep PM2 bound to `127.0.0.1:<PORT>`.
+
+If you change the app port, set `PORT` in `/opt/it-pr-dms/shared/.env` and update the upstream server line in `deploy/nginx/it-pr-dms.conf` to the same port:
+
+```text
+PORT=3001
+server 127.0.0.1:3001;
+```
+
+Then reload both services:
+
+```bash
+pm2 startOrReload /opt/it-pr-dms/current/ecosystem.config.cjs --env production
+sudo nginx -t
+sudo systemctl reload nginx
+```
 
 ## Production Environment Checklist
 
 Required:
 
 - `NODE_ENV=production`
+- `PORT` is the local Next.js listen port; default is `3000`.
 - `AUTH_SECRET` is a strong real secret.
 - `SQLSERVER_*` values point to the intended instance and database.
 - `CARBONE_URL`, `CARBONE_VERSION`, `CARBONE_CONVERTER`, and `CARBONE_TIMEOUT_MS` are set.
@@ -122,7 +138,7 @@ Before production, prefer `LDAP_TLS_REJECT_UNAUTHORIZED=true` after Node.js trus
 ## Smoke Test
 
 ```bash
-curl -I http://127.0.0.1:3000/login
+curl -I http://127.0.0.1:${PORT:-3000}/login
 curl -I http://localhost/login
 pm2 status it-pr-dms
 pm2 logs it-pr-dms --lines 100

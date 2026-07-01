@@ -35,8 +35,8 @@ Expected:
 
 ## Phase 5 Hardening Checks
 
-- `ecosystem.config.cjs` points PM2 to the intended release directory and keeps Next.js bound to `127.0.0.1:3000`.
-- `deploy/nginx/it-pr-dms.conf` has the correct `server_name`, upload cap, auth/upload/render rate limits, and proxy target.
+- `ecosystem.config.cjs` points PM2 to the intended release directory and reads the Next.js listen port from `PORT` with `3000` as the default.
+- `deploy/nginx/it-pr-dms.conf` has the correct `server_name`, upload cap, auth/upload/render rate limits, and proxy target port matching `PORT`.
 - `docs/DEPLOYMENT_UBUNTU_NGINX_PM2.md` has been followed in UAT.
 - `docs/BACKUP_RESTORE.md` has been tested by restoring SQL Server and storage to a non-production target.
 - `docs/OPERATIONS_RUNBOOK.md` daily and weekly checks are assigned to an owner.

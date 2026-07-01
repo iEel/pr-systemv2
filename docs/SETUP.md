@@ -77,6 +77,27 @@ The app has a dev-only fallback so local MVP testing can start quickly. Set a re
 
 Carbone render settings are also read from the local environment. Keep service URLs/tokens local and out of source control.
 
+## App Port
+
+The default app port is:
+
+```text
+PORT=3000
+```
+
+For local development, either set `PORT` before starting Next.js or pass the port directly:
+
+```powershell
+$env:PORT="3001"
+npm run dev
+```
+
+```bash
+npm run dev -- --port 3001
+```
+
+Restart the running Next.js process after changing the port. For Ubuntu/nginx/PM2, update `PORT` in `/opt/it-pr-dms/shared/.env`, update the nginx upstream port in `deploy/nginx/it-pr-dms.conf`, then reload PM2 and nginx.
+
 ## Local Login
 
 Seeded MVP admin:

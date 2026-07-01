@@ -49,6 +49,7 @@ Completed:
 - Phase 5 baseline hardening runbooks and deployment scaffolds for Ubuntu, nginx, PM2, backup/restore, monitoring, rate limiting, retention, and Carbone incidents.
 - Carbone client errors are now classified as config, HTTP, network, or timeout with safe user-facing messages instead of leaking long render response bodies.
 - Source-control hygiene is set for GitHub publishing: environment files, build output, local QA captures, and runtime document storage are ignored, while seed templates under `storage/templates/` remain tracked for tests and first-run setup.
+- App listen port is documented as `PORT=3000` in `.env.example`; PM2 loads `.env` before starting Next.js, and nginx upstream must be kept in sync when changing ports.
 - Production UI copy no longer labels the connected app as Phase 1 sample data; PR list filtering now uses `lib/pr-filters.ts` instead of `lib/sample-data.ts`.
 
 Not done yet:
@@ -130,6 +131,7 @@ Latest verified result on 2026-07-01 after GitHub source-control hygiene and Pha
 - Added `ecosystem.config.cjs` for PM2 and `deploy/nginx/it-pr-dms.conf` for nginx reverse proxy, upload limits, render route timeouts, and baseline rate limits.
 - Added `docs/DEPLOYMENT_UBUNTU_NGINX_PM2.md`, `docs/OPERATIONS_RUNBOOK.md`, `docs/BACKUP_RESTORE.md`, and `docs/RETENTION_POLICY.md`.
 - Added GitHub-safe `.gitignore` coverage for local QA captures, build output, environment files, and runtime document storage; `.env.example` and `docs/DATABASE.md` use placeholder host values instead of private network details.
+- Added `PORT=3000` to `.env.example`, wired PM2 to load `.env` before reading the port, and documented the nginx upstream sync step for custom ports.
 - Known warning remains: Prisma/MSSQL emits Node `DEP0123` when TLS `ServerName` is an IP address; current commands still pass.
 
 Previous verified result on 2026-06-30 after PR Detail compact Next Action polish:
