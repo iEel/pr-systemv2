@@ -160,7 +160,50 @@ describe("draft purchase request form parsing", () => {
     });
   });
 
-  test("requires at least one priced item even when heading rows exist", () => {
+  test("allows detail rows after a priced item without quantity or unit cost", () => {
+    const draft = parseDraftPurchaseRequestForm(
+      formData({
+        branchId: "br_sonic04",
+        departmentId: "dep_it",
+        divisionId: "div_it",
+        documentDate: "2026-06-28",
+        purpose: "ซื้อใหม่",
+        purchaseMethod: "ฝ่ายจัดซื้อจัดหา",
+        itemRowType: ["ITEM", "DETAIL"],
+        itemAccountCode: ["", ""],
+        itemDescription: ["Mini PC", "Includes keyboard and onsite setup"],
+        itemQuantity: ["2", ""],
+        itemUnitCost: ["12500", ""],
+      }),
+    );
+
+    expect(draft.items).toEqual([
+      {
+        rowType: "ITEM",
+        accountCode: "",
+        description: "Mini PC",
+        quantity: 2,
+        unitCost: 12500,
+        totalAmount: 25000,
+      },
+      {
+        rowType: "DETAIL",
+        accountCode: "",
+        description: "Includes keyboard and onsite setup",
+        quantity: 0,
+        unitCost: 0,
+        totalAmount: 0,
+      },
+    ]);
+    expect(calculateDraftTotals(draft.items)).toEqual({
+      subtotal: 25000,
+      vatRate: 7,
+      vatAmount: 1750,
+      totalAmount: 26750,
+    });
+  });
+
+  test("requires at least one priced item even when heading or detail rows exist", () => {
     expect(() =>
       parseDraftPurchaseRequestForm(
         formData({
@@ -169,11 +212,11 @@ describe("draft purchase request form parsing", () => {
           documentDate: "2026-06-28",
           purpose: "ซื้อใหม่",
           purchaseMethod: "ฝ่ายจัดซื้อจัดหา",
-          itemRowType: ["HEADING"],
+          itemRowType: ["HEADING", "DETAIL"],
           itemAccountCode: [""],
-          itemDescription: ["Software"],
-          itemQuantity: [""],
-          itemUnitCost: [""],
+          itemDescription: ["Software", "Antivirus subscription"],
+          itemQuantity: ["", ""],
+          itemUnitCost: ["", ""],
         }),
       ),
     ).toThrow(DraftValidationError);

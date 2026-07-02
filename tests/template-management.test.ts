@@ -192,6 +192,31 @@ describe("template management helpers", () => {
     expect(result.unknownTags).toEqual([]);
   });
 
+  test("allows item row mode tags for heading and detail-aware templates", () => {
+    const result = validateTemplateTags([
+      "d.prNo",
+      "d.documentDate",
+      "d.companyName",
+      "d.branchName",
+      "d.department",
+      "d.purpose",
+      "d.purchaseMethod",
+      "d.totalAmount",
+      "d.items[i].description",
+      "d.items[i].quantity",
+      "d.items[i].unitCost",
+      "d.items[i].totalAmount",
+      "d.items[i].lineNo",
+      "d.items[i].itemNo",
+      "d.items[i].rowType",
+      "d.items[i].isHeading",
+      "d.items[i].isDetail",
+    ]);
+
+    expect(result.missingRequiredTags).toEqual([]);
+    expect(result.unknownTags).toEqual([]);
+  });
+
   test("keeps item loop markers inside the item table in the active PR template", async () => {
     const buffer = readFileSync("storage/templates/PR_STANDARD_V1.docx");
     const zip = await JSZip.loadAsync(buffer);
@@ -333,11 +358,21 @@ describe("template management helpers", () => {
       remarkLine1: expect.any(String),
       totalAmountFormatted: "116,256.04",
     });
-    expect(payload.items).toHaveLength(3);
+    expect(payload.items).toHaveLength(4);
     expect(payload.items[0]).toMatchObject({
       accountCode: "",
       description: "Dell PowerEdge R750 Server",
       unitCostFormatted: "78,500.00",
+    });
+    expect(payload.items[1]).toMatchObject({
+      description: "- Includes rack rail kit and onsite setup",
+      isDetail: true,
+      lineNo: "",
+      totalAmountFormatted: "",
+    });
+    expect(payload.items[2]).toMatchObject({
+      description: "Samsung SSD 1.92TB SATA",
+      lineNo: 2,
     });
   });
 });

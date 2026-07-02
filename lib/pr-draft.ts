@@ -5,7 +5,7 @@ import { buildDefaultDraftItems } from "./pr-form-defaults";
 
 export { buildDefaultDraftItems, buildDefaultDraftRemark, type DraftDefaultLineItem } from "./pr-form-defaults";
 
-export type DraftLineItemRowType = "ITEM" | "HEADING";
+export type DraftLineItemRowType = "ITEM" | "HEADING" | "DETAIL";
 
 export type DraftLineItem = {
   rowType?: DraftLineItemRowType;
@@ -141,11 +141,11 @@ function toNumber(value: NumericValue) {
 }
 
 function normalizeRowType(value: string | null | undefined): DraftLineItemRowType {
-  return value === "HEADING" ? "HEADING" : "ITEM";
+  return value === "HEADING" || value === "DETAIL" ? value : "ITEM";
 }
 
-function isHeadingItem(item: Pick<DraftLineItem, "rowType">) {
-  return normalizeRowType(item.rowType) === "HEADING";
+function isPricedItem(item: Pick<DraftLineItem, "rowType">) {
+  return normalizeRowType(item.rowType) === "ITEM";
 }
 
 function isPreferredItName(value: string) {
@@ -163,7 +163,7 @@ export function selectDefaultDepartmentAndDivision(departments: DepartmentOption
 }
 
 export function calculateDraftTotals(items: DraftLineItem[]): DraftTotals {
-  const subtotal = roundMoney(items.reduce((sum, item) => sum + (isHeadingItem(item) ? 0 : item.totalAmount), 0));
+  const subtotal = roundMoney(items.reduce((sum, item) => sum + (isPricedItem(item) ? item.totalAmount : 0), 0));
   const vatRate = 7;
   const vatAmount = roundMoney(subtotal * (vatRate / 100));
 
@@ -211,9 +211,9 @@ export function parseDraftPurchaseRequestForm(formData: FormData): DraftPurchase
 
     if (!rowHasValue) continue;
 
-    if (rowType === "HEADING") {
+    if (rowType !== "ITEM") {
       if (!description) {
-        fieldErrors.items = "ตรวจสอบหัวข้อรายการให้ครบถ้วน";
+        fieldErrors.items = "ตรวจสอบหัวข้อ/รายละเอียดรายการให้ครบถ้วน";
         continue;
       }
 
@@ -246,7 +246,7 @@ export function parseDraftPurchaseRequestForm(formData: FormData): DraftPurchase
     });
   }
 
-  if (!items.some((item) => !isHeadingItem(item))) fieldErrors.items = "ต้องมีรายการสินค้า/บริการอย่างน้อย 1 รายการ";
+  if (!items.some(isPricedItem)) fieldErrors.items = "ต้องมีรายการสินค้า/บริการอย่างน้อย 1 รายการ";
 
   if (Object.keys(fieldErrors).length > 0) {
     throw new DraftValidationError(fieldErrors);
@@ -298,9 +298,9 @@ export function buildDraftCreateData(
         rowType: normalizeRowType(item.rowType),
         accountCode: item.accountCode,
         description: item.description,
-        quantity: isHeadingItem(item) ? 0 : item.quantity,
-        unitCost: isHeadingItem(item) ? 0 : item.unitCost,
-        totalAmount: isHeadingItem(item) ? 0 : item.totalAmount,
+        quantity: isPricedItem(item) ? item.quantity : 0,
+        unitCost: isPricedItem(item) ? item.unitCost : 0,
+        totalAmount: isPricedItem(item) ? item.totalAmount : 0,
       })),
     },
   };
@@ -363,9 +363,9 @@ export function buildDraftUpdateData(input: DraftPurchaseRequestInput, context: 
       rowType: normalizeRowType(item.rowType),
       accountCode: item.accountCode,
       description: item.description,
-      quantity: isHeadingItem(item) ? 0 : item.quantity,
-      unitCost: isHeadingItem(item) ? 0 : item.unitCost,
-      totalAmount: isHeadingItem(item) ? 0 : item.totalAmount,
+      quantity: isPricedItem(item) ? item.quantity : 0,
+      unitCost: isPricedItem(item) ? item.unitCost : 0,
+      totalAmount: isPricedItem(item) ? item.totalAmount : 0,
     })),
   };
 }

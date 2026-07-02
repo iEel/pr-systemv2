@@ -40,7 +40,7 @@ export type PurchaseRequestDetail = {
   items: Array<{
     lineNo: number;
     displayLineNo: number | "";
-    rowType: "ITEM" | "HEADING";
+    rowType: "ITEM" | "HEADING" | "DETAIL";
     accountCode: string;
     description: string;
     quantity: number;
@@ -148,8 +148,8 @@ function toDateString(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : null;
 }
 
-function normalizeItemRowType(value: string | null | undefined): "ITEM" | "HEADING" {
-  return value === "HEADING" ? "HEADING" : "ITEM";
+function normalizeItemRowType(value: string | null | undefined): "ITEM" | "HEADING" | "DETAIL" {
+  return value === "HEADING" || value === "DETAIL" ? value : "ITEM";
 }
 
 function toDateTimeString(date: Date | null) {
@@ -219,8 +219,8 @@ export function mapPurchaseRequestDetailRecord(record: PurchaseRequestDetailReco
     },
     items: record.items.reduce<PurchaseRequestDetail["items"]>((items, item) => {
       const rowType = normalizeItemRowType(item.rowType);
-      const isHeading = rowType === "HEADING";
-      const displayLineNo = isHeading ? "" : items.filter((current) => current.rowType !== "HEADING").length + 1;
+      const isPricedItem = rowType === "ITEM";
+      const displayLineNo = isPricedItem ? items.filter((current) => current.rowType === "ITEM").length + 1 : "";
 
       items.push({
         lineNo: item.lineNo,
@@ -228,9 +228,9 @@ export function mapPurchaseRequestDetailRecord(record: PurchaseRequestDetailReco
         rowType,
         accountCode: item.accountCode,
         description: item.description,
-        quantity: isHeading ? 0 : toNumber(item.quantity),
-        unitCost: isHeading ? 0 : toNumber(item.unitCost),
-        total: isHeading ? 0 : toNumber(item.totalAmount),
+        quantity: isPricedItem ? toNumber(item.quantity) : 0,
+        unitCost: isPricedItem ? toNumber(item.unitCost) : 0,
+        total: isPricedItem ? toNumber(item.totalAmount) : 0,
       });
 
       return items;

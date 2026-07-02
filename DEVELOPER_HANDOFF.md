@@ -26,7 +26,7 @@ Completed:
 - PR Documents row actions now use real links: detail, draft/generated PDF download, and a More menu with lifecycle shortcuts including Upload Quotation.
 - PR Detail is now a command center with clear `Next action`, `Review & files`, and `Danger zone` groups instead of inactive lifecycle buttons.
 - Server-side PR totals, validation, and audit events for draft create/update.
-- PR item rows support `ITEM` and `HEADING`: headings are non-priced grouping rows, require only Description, persist zero numeric values, do not affect totals/budget, and render with blank visible numbering/amounts while priced rows keep continuous item numbers.
+- PR item rows support `ITEM`, `HEADING`, and `DETAIL`: headings are non-priced grouping rows, details are non-priced continuation rows under the prior item, both require only Description, persist zero numeric values, do not affect totals/budget, and render with blank visible numbering/amounts while priced rows keep continuous item numbers.
 - Draft form supports `Save & Preview` / `Update & Preview`, which persists the draft and immediately redirects to the temporary PDF preview.
 - Clone PR is implemented as `Clone as Draft`: `/pr/new?cloneFrom=<id>` opens a prefilled New PR form, resets document date to today, clears required date, does not copy PR number/PDF/signed files/audit history, and writes `clonedFromId` plus `Draft cloned` audit metadata only after the user saves.
 - Active `PR_STANDARD` DOCX template rendering through Carbone with PDF output.
@@ -115,6 +115,21 @@ npm run build
 npx prisma validate
 npm run pdf:qa -- --input storage/generated/ITPR_2606008.pdf --expected-pages 1
 ```
+
+Latest verified result on 2026-07-02 after PR item detail rows:
+- Added migration `000008_purchase_request_item_detail_row_type`; the `IT_PR_DMS` database on `alpha` is up to date with 8 migrations and the `PurchaseRequestItem.rowType` check constraint now allows `ITEM`, `HEADING`, and `DETAIL`.
+- Create/edit/clone/reissue flows preserve row type. `DETAIL` rows require only Description, store zero numeric values, do not affect totals or soft budget tracking, and render as description-only continuation rows with blank visible item number/amount cells.
+- Document payload item rows now expose `d.items[i].isDetail`; detail descriptions are prefixed with `- ` for the current `PR_STANDARD` template while following priced items keep continuous visible numbering.
+- `npm test -- tests/pr-draft.test.ts tests/pr-generate.test.ts tests/pr-form-workflow-copy.test.ts tests/purchase-request-detail.test.ts`: passed, 4 files / 34 tests.
+- `npm test -- tests/template-management.test.ts`: passed, 1 file / 19 tests.
+- `npm run typecheck`: passed.
+- `npx prisma validate`: passed.
+- `npx prisma migrate deploy`: applied `000008_purchase_request_item_detail_row_type`.
+- `npx prisma migrate status`: database schema is up to date with 8 migrations.
+- `npm test`: passed, 50 files / 253 tests.
+- `npm run build`: passed.
+- `git diff --check`: passed with Windows LF/CRLF warnings only.
+- Known warning remains: Prisma/MSSQL emits Node `DEP0123` when TLS `ServerName` is an IP address; current commands still pass.
 
 Latest verified result on 2026-07-02 after premium generated Login hero update:
 - `npm test -- tests/login-page-copy.test.ts`: passed, 1 file / 2 tests.
@@ -398,7 +413,7 @@ See [docs/DOCUMENT_GENERATION.md](docs/DOCUMENT_GENERATION.md) for the full rend
 
 Important current tags:
 - Monetary display fields should use `d.items[i].unitCostFormatted`, `d.items[i].totalAmountFormatted`, `d.subtotalFormatted`, `d.vatAmountFormatted`, and `d.totalAmountFormatted`.
-- Item loop rows expose `d.items[i].rowType`, `d.items[i].isHeading`, and `d.items[i].itemNo`; `d.items[i].lineNo` is blank for heading rows and numbered only for priced item rows.
+- Item loop rows expose `d.items[i].rowType`, `d.items[i].isHeading`, `d.items[i].isDetail`, and `d.items[i].itemNo`; `d.items[i].lineNo` is blank for heading/detail rows and numbered only for priced item rows.
 - Remark rows should use `d.remarkLine1` and `d.remarkLine2` for the two ruled lines in the Word template.
 - Purpose/purchase method checkbox cells should use precomputed mark tags such as `d.purposeNewMark`, `d.purposeRepairMark`, `d.purchaseByProcurementMark`, and `d.purchaseSelfMark`.
 - Header/footer image placeholders are detected by image alt text containing `{d.companyHeaderImage}` and `{d.companyFooterImage}`.
@@ -408,7 +423,7 @@ Important current tags:
 ## UI Formatting Notes
 
 - PR item table amount columns (`Unit Cost`, `Total Amount`) display plain numeric values with comma separators and two decimals, without a currency prefix.
-- PR create/edit item table has row modes: `รายการ` requires Qty/Unit Cost and affects totals; `หัวข้อ` requires only Description and shows blank non-priced cells.
+- PR create/edit item table has row modes: `รายการ` requires Qty/Unit Cost and affects totals; `หัวข้อ` and `รายละเอียด` require only Description and show blank non-priced cells. Detail rows are intended for notes/spec lines under the preceding priced item.
 - PR create/edit item table uses fixed percentage columns: Description remains the primary wide column, Acct/Qty/Unit Cost use compact cells and numeric inputs that still show values such as `1000` and `100000.00`, and Total Amount/action columns are compact enough to avoid desktop horizontal scroll.
 - New PR item rows start blank. Do not prefill sample Description, Quantity, Unit Cost, or Acct values in the create form.
 - New PR Remark starts blank. Do not prefill sample remark text in the create form.

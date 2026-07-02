@@ -35,6 +35,24 @@ describe("purchase request detail mapping", () => {
             unitCost: "78500.00",
             totalAmount: "78500.00",
           },
+          {
+            lineNo: 2,
+            rowType: "DETAIL",
+            accountCode: "",
+            description: "Includes rack rail kit and onsite setup",
+            quantity: "0.0000",
+            unitCost: "0.00",
+            totalAmount: "0.00",
+          },
+          {
+            lineNo: 3,
+            rowType: "ITEM",
+            accountCode: "",
+            description: "UPS Battery Replacement Pack",
+            quantity: "1.0000",
+            unitCost: "30150.00",
+            totalAmount: "30150.00",
+          },
         ],
         attachments: [
           {
@@ -79,6 +97,26 @@ describe("purchase request detail mapping", () => {
         quantity: 1,
         unitCost: 78500,
         total: 78500,
+      },
+      {
+        lineNo: 2,
+        displayLineNo: "",
+        rowType: "DETAIL",
+        accountCode: "",
+        description: "Includes rack rail kit and onsite setup",
+        quantity: 0,
+        unitCost: 0,
+        total: 0,
+      },
+      {
+        lineNo: 3,
+        displayLineNo: 2,
+        rowType: "ITEM",
+        accountCode: "",
+        description: "UPS Battery Replacement Pack",
+        quantity: 1,
+        unitCost: 30150,
+        total: 30150,
       },
     ]);
     expect(detail.attachments[0]).toMatchObject({

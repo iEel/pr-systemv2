@@ -172,10 +172,11 @@ Suggested fields:
 - `totalAmount`
 
 Current rules:
-- `rowType` is `ITEM` or `HEADING`; older/missing values are treated as `ITEM` by app logic.
+- `rowType` is `ITEM`, `HEADING`, or `DETAIL`; older/missing values are treated as `ITEM` by app logic.
 - `ITEM` rows are normal priced product/service rows and require Description, Qty, and Unit Cost.
 - `HEADING` rows are grouping rows inside the item table. They require only Description, store `quantity = 0`, `unitCost = 0`, and `totalAmount = 0`, and are excluded from subtotal/VAT/total calculations.
-- `lineNo` remains the physical row order. The PDF render payload numbers only `ITEM` rows so headings do not shift visible item numbers.
+- `DETAIL` rows are description-only continuation rows below an item. They require only Description, store `quantity = 0`, `unitCost = 0`, and `totalAmount = 0`, and are excluded from subtotal/VAT/total calculations.
+- `lineNo` remains the physical row order. The PDF render payload numbers only `ITEM` rows so heading/detail rows do not shift visible item numbers.
 
 ### PurchaseRequestAttachment
 
@@ -299,7 +300,7 @@ Rules:
 
 Backend should calculate and persist:
 
-- Line total: `quantity * unitCost` for `ITEM` rows; `HEADING` rows persist zero.
+- Line total: `quantity * unitCost` for `ITEM` rows; `HEADING` and `DETAIL` rows persist zero.
 - Subtotal: sum of `ITEM` line totals only
 - VAT amount: `subtotal * vatRate`
 - Total: `subtotal + vatAmount`

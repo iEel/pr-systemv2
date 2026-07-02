@@ -103,8 +103,17 @@ function formatAmount(value: number) {
   }).format(value);
 }
 
-function normalizeItemRowType(value: string | null | undefined): "ITEM" | "HEADING" {
-  return value === "HEADING" ? "HEADING" : "ITEM";
+type PurchaseRequestItemRowType = "ITEM" | "HEADING" | "DETAIL";
+
+function normalizeItemRowType(value: string | null | undefined): PurchaseRequestItemRowType {
+  return value === "HEADING" || value === "DETAIL" ? value : "ITEM";
+}
+
+function formatItemDescription(rowType: PurchaseRequestItemRowType, description: string) {
+  if (rowType !== "DETAIL") return description;
+
+  const trimmed = description.trim();
+  return trimmed.startsWith("- ") ? trimmed : `- ${trimmed}`;
 }
 
 const remarkTemplateLineMaxLength = 78;
@@ -245,8 +254,9 @@ export function buildPurchaseRequestRenderPayload(record: PurchaseRequestRenderR
       .reduce<Array<{
         lineNo: number | "";
         itemNo: number | "";
-        rowType: "ITEM" | "HEADING";
+        rowType: PurchaseRequestItemRowType;
         isHeading: boolean;
+        isDetail: boolean;
         accountCode: string;
         description: string;
         quantity: number | "";
@@ -256,20 +266,23 @@ export function buildPurchaseRequestRenderPayload(record: PurchaseRequestRenderR
         totalAmountFormatted: string;
       }>>((items, item) => {
         const isHeading = item.rowType === "HEADING";
-        const itemNo = isHeading ? "" : items.filter((current) => !current.isHeading).length + 1;
+        const isDetail = item.rowType === "DETAIL";
+        const isPricedItem = item.rowType === "ITEM";
+        const itemNo = isPricedItem ? items.filter((current) => current.rowType === "ITEM").length + 1 : "";
 
         items.push({
           lineNo: itemNo,
           itemNo,
           rowType: item.rowType,
           isHeading,
+          isDetail,
           accountCode: item.accountCode,
-          description: item.description,
-          quantity: isHeading ? "" : toNumber(item.quantity),
+          description: formatItemDescription(item.rowType, item.description),
+          quantity: isPricedItem ? toNumber(item.quantity) : "",
           unitCost: toNumber(item.unitCost),
-          unitCostFormatted: isHeading ? "" : formatAmount(toNumber(item.unitCost)),
+          unitCostFormatted: isPricedItem ? formatAmount(toNumber(item.unitCost)) : "",
           totalAmount: toNumber(item.totalAmount),
-          totalAmountFormatted: isHeading ? "" : formatAmount(toNumber(item.totalAmount)),
+          totalAmountFormatted: isPricedItem ? formatAmount(toNumber(item.totalAmount)) : "",
         });
 
         return items;

@@ -209,6 +209,7 @@ Common item fields:
 - `d.items[i].itemNo`
 - `d.items[i].rowType`
 - `d.items[i].isHeading`
+- `d.items[i].isDetail`
 - `d.items[i].accountCode`
 - `d.items[i].description`
 - `d.items[i].quantity`
@@ -218,12 +219,13 @@ Common item fields:
 
 `accountCode` can be blank. The create PR form intentionally allows Acct to be empty.
 
-PR item rows support two row types:
+PR item rows support three row types:
 
 - `ITEM`: a priced item/service row. It requires Description, Qty, and Unit Cost, is included in subtotal/VAT/total calculations, and receives the next visible item number.
 - `HEADING`: a non-priced grouping row. It requires only Description, stores zero numeric values in SQL Server, is excluded from totals, and renders blank `lineNo`, `quantity`, `unitCostFormatted`, and `totalAmountFormatted` values.
+- `DETAIL`: a non-priced description-only continuation row for the item above it. It requires only Description, stores zero numeric values, is excluded from totals, renders blank number/quantity/amount values, and prefixes the rendered document description with `- ` for the current template.
 
-The current `PR_STANDARD` Word template can keep using `d.items[i].lineNo` for the visible number. Heading rows intentionally render that value blank, so later item rows keep continuous numbering such as `1, 2, 3` even when headings are inserted between them. `d.items[i].itemNo` is available as the same visible number for newer templates.
+The current `PR_STANDARD` Word template can keep using `d.items[i].lineNo` for the visible number. Heading and detail rows intentionally render that value blank, so later item rows keep continuous numbering such as `1, 2, 3` even when non-priced rows are inserted between them. `d.items[i].itemNo` is available as the same visible number for newer templates.
 
 ## Required Tags
 

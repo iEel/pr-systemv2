@@ -322,6 +322,15 @@ export function PRDetail({ detail }: { detail: PurchaseRequestDetail }) {
                             {item.description}
                           </td>
                         </tr>
+                      ) : item.rowType === "DETAIL" ? (
+                        <tr className="bg-slate-50/70" key={item.lineNo}>
+                          <td className={tableCellClass}></td>
+                          <td className={tableCellClass}></td>
+                          <td className={`${tableCellClass} font-semibold text-slate-700`} colSpan={4}>
+                            <span className="mr-2 text-muted">-</span>
+                            {item.description}
+                          </td>
+                        </tr>
                       ) : (
                         <tr key={item.lineNo}>
                           <td className={tableCellClass}>{item.displayLineNo}</td>

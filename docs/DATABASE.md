@@ -93,6 +93,7 @@ The backend foundation is already implemented:
 - Migration `000005_purchase_request_clone_source` has been applied; it adds nullable `PurchaseRequest.clonedFromId` with an index and self-referencing foreign key for Clone as Draft lineage.
 - Migration `000006_user_auth_provider` has been applied; it adds nullable local password support plus `User.authProvider`, `externalUsername`, `externalId`, and `lastLoginAt` for Local + AD/LDAP Search + Bind authentication.
 - Migration `000007_purchase_request_item_row_type` has been applied; it adds `PurchaseRequestItem.rowType` with `ITEM` / `HEADING` support for non-priced grouping rows.
+- Migration `000008_purchase_request_item_detail_row_type` has been applied; it recreates the `PurchaseRequestItem.rowType` check constraint with `ITEM` / `HEADING` / `DETAIL`.
 - `prisma/seed.mjs` seeds the MVP data.
 - PR list/detail/create/edit, template management, company master, auth, and document-control commands use SQL Server.
 
@@ -117,4 +118,4 @@ Database: IT_PR_DMS
 Status: ONLINE
 ```
 
-Seven Prisma migrations have been applied on the `ALPHA` instance. The database contains 13 base tables, including `_prisma_migrations`, `User`, `Company`, `Branch`, `PurchaseRequest`, `PurchaseRequestItem`, `PurchaseRequestAttachment`, `DocumentTemplate`, `RunningNumberSetting`, and `AuditLog`; `PurchaseRequest` now includes `clonedFromId` for clone lineage, `User` now includes Local/LDAP provider metadata, and `PurchaseRequestItem` now includes `rowType` for item vs heading rows.
+Eight Prisma migrations have been applied on the `ALPHA` instance. The database contains 13 base tables, including `_prisma_migrations`, `User`, `Company`, `Branch`, `PurchaseRequest`, `PurchaseRequestItem`, `PurchaseRequestAttachment`, `DocumentTemplate`, `RunningNumberSetting`, and `AuditLog`; `PurchaseRequest` now includes `clonedFromId` for clone lineage, `User` now includes Local/LDAP provider metadata, and `PurchaseRequestItem` now includes `rowType` for item, heading, and detail rows.
