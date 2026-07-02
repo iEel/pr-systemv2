@@ -122,6 +122,9 @@ Mobile:
 - Acct can be blank.
 - New PR item rows do not contain sample Description, Quantity, Unit Cost, or Acct values.
 - New PR Remark does not contain sample text.
+- PR item rows can be switched between `รายการ` and `หัวข้อ`.
+- Heading rows require only Description, do not require Qty or Unit Cost, and do not change subtotal/VAT/total.
+- PR detail and PDF output number only priced item rows, leaving heading row numbers and amount cells blank.
 - PR item Description column is visibly wider than Acct, Qty, and Unit Cost on desktop create/edit forms.
 - PR item Qty and Unit Cost inputs remain readable with sample values like `1000` and `100000.00`.
 - PR item table does not show unnecessary horizontal scroll on desktop widths around 960px and wider.
@@ -187,6 +190,7 @@ Mobile:
 - Remark Thai/English text uses the same visual font size and family as item-table text after PDF render.
 - Purpose and purchase method checkbox cells show marks only for selected options.
 - Item loop stays inside the item table.
+- Heading rows in the item loop render as description-only grouping rows; following priced items keep continuous visible numbering.
 - Long remark text does not push the PR into an unintended second page.
 - `npm run pdf:qa -- --input <pdf> --expected-pages 1` writes a `PASS` report for the representative PR PDF.
 - `output/pdf-qa/<pdf-name>/page-1.png` is manually reviewed before UAT.

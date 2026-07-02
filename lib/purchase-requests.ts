@@ -39,6 +39,8 @@ export type PurchaseRequestDetail = {
   };
   items: Array<{
     lineNo: number;
+    displayLineNo: number | "";
+    rowType: "ITEM" | "HEADING";
     accountCode: string;
     description: string;
     quantity: number;
@@ -91,6 +93,7 @@ type PurchaseRequestDetailRecord = PurchaseRequestRecord & {
   signedAt: Date | null;
   items: Array<{
     lineNo: number;
+    rowType?: string | null;
     accountCode: string;
     description: string;
     quantity: NumericValue;
@@ -143,6 +146,10 @@ function toNumber(value: NumericValue) {
 
 function toDateString(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : null;
+}
+
+function normalizeItemRowType(value: string | null | undefined): "ITEM" | "HEADING" {
+  return value === "HEADING" ? "HEADING" : "ITEM";
 }
 
 function toDateTimeString(date: Date | null) {
@@ -210,14 +217,24 @@ export function mapPurchaseRequestDetailRecord(record: PurchaseRequestDetailReco
       total: toNumber(record.totalAmount),
       status: mapDbStatusToUiStatus(record.status),
     },
-    items: record.items.map((item) => ({
-      lineNo: item.lineNo,
-      accountCode: item.accountCode,
-      description: item.description,
-      quantity: toNumber(item.quantity),
-      unitCost: toNumber(item.unitCost),
-      total: toNumber(item.totalAmount),
-    })),
+    items: record.items.reduce<PurchaseRequestDetail["items"]>((items, item) => {
+      const rowType = normalizeItemRowType(item.rowType);
+      const isHeading = rowType === "HEADING";
+      const displayLineNo = isHeading ? "" : items.filter((current) => current.rowType !== "HEADING").length + 1;
+
+      items.push({
+        lineNo: item.lineNo,
+        displayLineNo,
+        rowType,
+        accountCode: item.accountCode,
+        description: item.description,
+        quantity: isHeading ? 0 : toNumber(item.quantity),
+        unitCost: isHeading ? 0 : toNumber(item.unitCost),
+        total: isHeading ? 0 : toNumber(item.totalAmount),
+      });
+
+      return items;
+    }, []),
     attachments: record.attachments.map((attachment) => ({
       id: attachment.id,
       type: attachment.type,

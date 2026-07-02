@@ -13,6 +13,7 @@ import { formatAmount, formatTHB } from "@/lib/utils";
 
 type DraftRow = {
   id: string;
+  rowType: "ITEM" | "HEADING";
   accountCode: string;
   description: string;
   quantity: string;
@@ -43,9 +44,10 @@ function formatInputNumber(value: number | string) {
   return typeof value === "number" ? String(value) : value;
 }
 
-function createBlankRow(index: number): DraftRow {
+function createBlankRow(index: number, rowType: DraftRow["rowType"] = "ITEM"): DraftRow {
   return {
     id: `draft-row-${Date.now()}-${index}`,
+    rowType,
     accountCode: "",
     description: "",
     quantity: "",
@@ -57,6 +59,7 @@ function createInitialRows(options: DraftFormOptions, initialDraft?: DraftFormIn
   const sourceItems = initialDraft?.items.length ? initialDraft.items : options.defaultItems;
   const rows = sourceItems.map((item, index) => ({
     id: `default-row-${index + 1}`,
+    rowType: item.rowType || "ITEM",
     accountCode: item.accountCode,
     description: item.description,
     quantity: formatInputNumber(item.quantity),
@@ -82,7 +85,7 @@ export function PRForm({ action, cloneSource, initialDraft, mode = "new", option
   const canSave = Boolean(action);
 
   const totals = useMemo(() => {
-    const subtotal = rows.reduce((sum, row) => sum + toNumber(row.quantity) * toNumber(row.unitCost), 0);
+    const subtotal = rows.reduce((sum, row) => sum + (row.rowType === "HEADING" ? 0 : toNumber(row.quantity) * toNumber(row.unitCost)), 0);
     const vat = subtotal * 0.07;
 
     return {
@@ -93,11 +96,23 @@ export function PRForm({ action, cloneSource, initialDraft, mode = "new", option
   }, [rows]);
 
   function updateRow(rowId: string, field: keyof Omit<DraftRow, "id">, value: string) {
-    setRows((current) => current.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)));
+    setRows((current) =>
+      current.map((row) => {
+        if (row.id !== rowId) return row;
+        if (field === "rowType" && value === "HEADING") {
+          return { ...row, rowType: value, accountCode: "", quantity: "", unitCost: "" };
+        }
+        if (field === "rowType" && value === "ITEM") {
+          return { ...row, rowType: value };
+        }
+
+        return { ...row, [field]: value };
+      }),
+    );
   }
 
-  function addRow() {
-    setRows((current) => [...current, createBlankRow(current.length + 1)]);
+  function addRow(rowType: DraftRow["rowType"] = "ITEM") {
+    setRows((current) => [...current, createBlankRow(current.length + 1, rowType)]);
   }
 
   function removeRow(rowId: string) {
@@ -198,46 +213,62 @@ export function PRForm({ action, cloneSource, initialDraft, mode = "new", option
           <TableWrap>
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <h2 className="text-base font-bold text-ink">รายการสินค้า / บริการ</h2>
-              <Button onClick={addRow} type="button" variant="secondary"><Plus aria-hidden className="h-4 w-4" />เพิ่มรายการ</Button>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => addRow("HEADING")} type="button" variant="secondary"><Plus aria-hidden className="h-4 w-4" />เพิ่มหัวข้อ</Button>
+                <Button onClick={() => addRow("ITEM")} type="button" variant="secondary"><Plus aria-hidden className="h-4 w-4" />เพิ่มรายการ</Button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-[860px] w-full table-fixed border-collapse">
                 <colgroup>
                   <col className="w-[5%]" data-column="line-no" />
-                  <col className="w-[9%]" data-column="acct" />
-                  <col className="w-[38%]" data-column="description" />
-                  <col className="w-[10%]" data-column="qty" />
-                  <col className="w-[15%]" data-column="unit-cost" />
-                  <col className="w-[15%]" data-column="total-amount" />
+                  <col className="w-[10%]" data-column="row-type" />
+                  <col className="w-[8%]" data-column="acct" />
+                  <col className="w-[35%]" data-column="description" />
+                  <col className="w-[9%]" data-column="qty" />
+                  <col className="w-[14%]" data-column="unit-cost" />
+                  <col className="w-[14%]" data-column="total-amount" />
                   <col className="w-[5%]" data-column="actions" />
                 </colgroup>
                 <thead>
                   <tr>
-                    {["No", "Acct (Optional)", "Description", "Qty", "Unit Cost", "Total Amount", ""].map((head) => (
+                    {["No", "Type", "Acct", "Description", "Qty", "Unit Cost", "Total Amount", ""].map((head) => (
                       <th className={`${tableHeaderClass} px-4 py-3`} key={head}>{head}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row, index) => {
-                    const rowTotal = toNumber(row.quantity) * toNumber(row.unitCost);
+                    const isHeadingRow = row.rowType === "HEADING";
+                    const rowTotal = isHeadingRow ? 0 : toNumber(row.quantity) * toNumber(row.unitCost);
 
                     return (
-                      <tr key={row.id}>
+                      <tr className={isHeadingRow ? "bg-blue-50/60" : undefined} key={row.id}>
                         <td className={itemTableCompactCellClass}>{index + 1}</td>
                         <td className={itemTableCompactCellClass}>
-                          <input className={inputClass("px-2")} name="itemAccountCode" onChange={(event) => updateRow(row.id, "accountCode", event.target.value)} placeholder="Optional" value={row.accountCode} />
+                          <select
+                            className={inputClass("px-2")}
+                            name="itemRowType"
+                            onChange={(event) => updateRow(row.id, "rowType", event.target.value)}
+                            value={row.rowType}
+                          >
+                            <option value="ITEM">รายการ</option>
+                            <option value="HEADING">หัวข้อ</option>
+                          </select>
+                        </td>
+                        <td className={itemTableCompactCellClass}>
+                          <input className={inputClass("px-2")} name="itemAccountCode" onChange={(event) => updateRow(row.id, "accountCode", event.target.value)} placeholder={isHeadingRow ? "-" : "Optional"} readOnly={isHeadingRow} value={isHeadingRow ? "" : row.accountCode} />
                         </td>
                         <td className={tableCellClass}>
-                          <input className={inputClass()} name="itemDescription" onChange={(event) => updateRow(row.id, "description", event.target.value)} required value={row.description} />
+                          <input className={inputClass(isHeadingRow ? "border-blue-200 bg-white font-bold text-blue-950" : "")} name="itemDescription" onChange={(event) => updateRow(row.id, "description", event.target.value)} placeholder={isHeadingRow ? "หัวข้อกลุ่มรายการ" : ""} required value={row.description} />
                         </td>
                         <td className={itemTableCompactCellClass}>
-                          <input className={numberInputClass} min="0.0001" name="itemQuantity" onChange={(event) => updateRow(row.id, "quantity", event.target.value)} required step="0.0001" type="number" value={row.quantity} />
+                          <input className={numberInputClass} min="0.0001" name="itemQuantity" onChange={(event) => updateRow(row.id, "quantity", event.target.value)} placeholder={isHeadingRow ? "-" : ""} readOnly={isHeadingRow} required={!isHeadingRow} step="0.0001" type="number" value={isHeadingRow ? "" : row.quantity} />
                         </td>
                         <td className={itemTableCompactCellClass}>
-                          <input className={numberInputClass} min="0" name="itemUnitCost" onChange={(event) => updateRow(row.id, "unitCost", event.target.value)} required step="0.01" type="number" value={row.unitCost} />
+                          <input className={numberInputClass} min="0" name="itemUnitCost" onChange={(event) => updateRow(row.id, "unitCost", event.target.value)} placeholder={isHeadingRow ? "-" : ""} readOnly={isHeadingRow} required={!isHeadingRow} step="0.01" type="number" value={isHeadingRow ? "" : row.unitCost} />
                         </td>
-                        <td className={`${itemTableCompactCellClass} text-right font-bold tabular-nums`}>{formatAmount(rowTotal)}</td>
+                        <td className={`${itemTableCompactCellClass} text-right font-bold tabular-nums`}>{isHeadingRow ? "-" : formatAmount(rowTotal)}</td>
                         <td className={itemTableCompactCellClass}>
                           <button aria-label={`Remove line ${index + 1}`} className="rounded-md p-2 text-muted hover:bg-surface hover:text-danger" disabled={rows.length === 1} onClick={() => removeRow(row.id)} type="button">
                             <Trash2 aria-hidden className="h-4 w-4" />

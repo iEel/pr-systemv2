@@ -5,7 +5,10 @@ import { buildDefaultDraftItems } from "./pr-form-defaults";
 
 export { buildDefaultDraftItems, buildDefaultDraftRemark, type DraftDefaultLineItem } from "./pr-form-defaults";
 
+export type DraftLineItemRowType = "ITEM" | "HEADING";
+
 export type DraftLineItem = {
+  rowType?: DraftLineItemRowType;
   accountCode: string;
   description: string;
   quantity: number;
@@ -45,6 +48,7 @@ export type DraftFormInitialValue = {
   purchaseMethod: string;
   remark: string | null;
   items: Array<{
+    rowType?: DraftLineItemRowType;
     accountCode: string;
     description: string;
     quantity: number;
@@ -77,6 +81,7 @@ type DraftEditRecord = {
   remark: string | null;
   items: Array<{
     lineNo: number;
+    rowType?: string | null;
     accountCode: string;
     description: string;
     quantity: NumericValue;
@@ -135,6 +140,14 @@ function toNumber(value: NumericValue) {
   return Number(value);
 }
 
+function normalizeRowType(value: string | null | undefined): DraftLineItemRowType {
+  return value === "HEADING" ? "HEADING" : "ITEM";
+}
+
+function isHeadingItem(item: Pick<DraftLineItem, "rowType">) {
+  return normalizeRowType(item.rowType) === "HEADING";
+}
+
 function isPreferredItName(value: string) {
   return value.trim().toLowerCase() === "it";
 }
@@ -150,7 +163,7 @@ export function selectDefaultDepartmentAndDivision(departments: DepartmentOption
 }
 
 export function calculateDraftTotals(items: DraftLineItem[]): DraftTotals {
-  const subtotal = roundMoney(items.reduce((sum, item) => sum + item.totalAmount, 0));
+  const subtotal = roundMoney(items.reduce((sum, item) => sum + (isHeadingItem(item) ? 0 : item.totalAmount), 0));
   const vatRate = 7;
   const vatAmount = roundMoney(subtotal * (vatRate / 100));
 
@@ -183,18 +196,37 @@ export function parseDraftPurchaseRequestForm(formData: FormData): DraftPurchase
   const accountCodes = getTextList(formData, "itemAccountCode");
   const descriptions = getTextList(formData, "itemDescription");
   const quantities = getTextList(formData, "itemQuantity");
+  const rowTypes = getTextList(formData, "itemRowType");
   const unitCosts = getTextList(formData, "itemUnitCost");
-  const maxRows = Math.max(accountCodes.length, descriptions.length, quantities.length, unitCosts.length);
+  const maxRows = Math.max(accountCodes.length, descriptions.length, quantities.length, rowTypes.length, unitCosts.length);
   const items: DraftLineItem[] = [];
 
   for (let index = 0; index < maxRows; index += 1) {
     const accountCode = accountCodes[index] || "";
     const description = descriptions[index] || "";
     const quantityText = quantities[index] || "";
+    const rowType = normalizeRowType(rowTypes[index]);
     const unitCostText = unitCosts[index] || "";
     const rowHasValue = [accountCode, description, quantityText, unitCostText].some(Boolean);
 
     if (!rowHasValue) continue;
+
+    if (rowType === "HEADING") {
+      if (!description) {
+        fieldErrors.items = "ตรวจสอบหัวข้อรายการให้ครบถ้วน";
+        continue;
+      }
+
+      items.push({
+        rowType,
+        accountCode: "",
+        description,
+        quantity: 0,
+        unitCost: 0,
+        totalAmount: 0,
+      });
+      continue;
+    }
 
     const quantity = parseAmount(quantityText);
     const unitCost = parseAmount(unitCostText);
@@ -205,6 +237,7 @@ export function parseDraftPurchaseRequestForm(formData: FormData): DraftPurchase
     }
 
     items.push({
+      rowType,
       accountCode,
       description,
       quantity,
@@ -213,7 +246,7 @@ export function parseDraftPurchaseRequestForm(formData: FormData): DraftPurchase
     });
   }
 
-  if (items.length === 0) fieldErrors.items = "ต้องมีรายการสินค้า/บริการอย่างน้อย 1 รายการ";
+  if (!items.some((item) => !isHeadingItem(item))) fieldErrors.items = "ต้องมีรายการสินค้า/บริการอย่างน้อย 1 รายการ";
 
   if (Object.keys(fieldErrors).length > 0) {
     throw new DraftValidationError(fieldErrors);
@@ -262,11 +295,12 @@ export function buildDraftCreateData(
     items: {
       create: input.items.map((item, index) => ({
         lineNo: index + 1,
+        rowType: normalizeRowType(item.rowType),
         accountCode: item.accountCode,
         description: item.description,
-        quantity: item.quantity,
-        unitCost: item.unitCost,
-        totalAmount: item.totalAmount,
+        quantity: isHeadingItem(item) ? 0 : item.quantity,
+        unitCost: isHeadingItem(item) ? 0 : item.unitCost,
+        totalAmount: isHeadingItem(item) ? 0 : item.totalAmount,
       })),
     },
   };
@@ -286,6 +320,7 @@ export function mapDraftEditRecordToInitialValue(record: DraftEditRecord): Draft
     items: record.items
       .sort((left, right) => left.lineNo - right.lineNo)
       .map((item) => ({
+        rowType: normalizeRowType(item.rowType),
         accountCode: item.accountCode,
         description: item.description,
         quantity: toNumber(item.quantity),
@@ -325,11 +360,12 @@ export function buildDraftUpdateData(input: DraftPurchaseRequestInput, context: 
     },
     items: input.items.map((item, index) => ({
       lineNo: index + 1,
+      rowType: normalizeRowType(item.rowType),
       accountCode: item.accountCode,
       description: item.description,
-      quantity: item.quantity,
-      unitCost: item.unitCost,
-      totalAmount: item.totalAmount,
+      quantity: isHeadingItem(item) ? 0 : item.quantity,
+      unitCost: isHeadingItem(item) ? 0 : item.unitCost,
+      totalAmount: isHeadingItem(item) ? 0 : item.totalAmount,
     })),
   };
 }

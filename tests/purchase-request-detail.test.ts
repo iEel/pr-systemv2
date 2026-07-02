@@ -28,6 +28,7 @@ describe("purchase request detail mapping", () => {
         items: [
           {
             lineNo: 1,
+            rowType: "ITEM",
             accountCode: "51510101",
             description: "Dell PowerEdge R750 Server",
             quantity: "1.0000",
@@ -71,6 +72,8 @@ describe("purchase request detail mapping", () => {
     expect(detail.items).toEqual([
       {
         lineNo: 1,
+        displayLineNo: 1,
+        rowType: "ITEM",
         accountCode: "51510101",
         description: "Dell PowerEdge R750 Server",
         quantity: 1,

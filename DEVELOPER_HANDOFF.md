@@ -26,6 +26,7 @@ Completed:
 - PR Documents row actions now use real links: detail, draft/generated PDF download, and a More menu with lifecycle shortcuts including Upload Quotation.
 - PR Detail is now a command center with clear `Next action`, `Review & files`, and `Danger zone` groups instead of inactive lifecycle buttons.
 - Server-side PR totals, validation, and audit events for draft create/update.
+- PR item rows support `ITEM` and `HEADING`: headings are non-priced grouping rows, require only Description, persist zero numeric values, do not affect totals/budget, and render with blank visible numbering/amounts while priced rows keep continuous item numbers.
 - Draft form supports `Save & Preview` / `Update & Preview`, which persists the draft and immediately redirects to the temporary PDF preview.
 - Clone PR is implemented as `Clone as Draft`: `/pr/new?cloneFrom=<id>` opens a prefilled New PR form, resets document date to today, clears required date, does not copy PR number/PDF/signed files/audit history, and writes `clonedFromId` plus `Draft cloned` audit metadata only after the user saves.
 - Active `PR_STANDARD` DOCX template rendering through Carbone with PDF output.
@@ -134,6 +135,17 @@ Latest operational note on 2026-07-02 after Auth.js JWTSessionError investigatio
 - Local `.env` was missing `AUTH_SECRET`; a stable local value was added without exposing the secret.
 - `.env.example` now includes an `AUTH_SECRET` placeholder.
 - `docs/SETUP.md` documents the `no matching decryption secret` recovery path: keep `AUTH_SECRET` stable, restart the app after changes, clear old Auth.js cookies, and sign in again.
+
+Latest verified result on 2026-07-02 after PR item heading rows:
+- Added `PurchaseRequestItem.rowType` through migration `000007_purchase_request_item_row_type`; the `IT_PR_DMS` database on `alpha` now has non-null `rowType` plus an `ITEM` / `HEADING` check constraint.
+- Create/edit/clone/reissue flows preserve heading rows. Heading rows require only Description, store zero numeric values, do not affect totals or budget calculations, and render blank visible item number/amount cells.
+- `npm test -- tests/pr-draft.test.ts tests/pr-generate.test.ts tests/pr-form-workflow-copy.test.ts tests/purchase-request-detail.test.ts tests/phase5-hardening-docs.test.ts`: passed, 5 files / 36 tests.
+- `npm run typecheck`: passed.
+- `npx prisma validate`: passed.
+- `npx prisma migrate status`: database schema is up to date with 7 migrations.
+- `npm test`: passed, 50 files / 250 tests.
+- `npm run build`: passed.
+- Known warning remains: Prisma/MSSQL emits Node `DEP0123` when TLS `ServerName` is an IP address; current commands still pass.
 
 Previous verified result on 2026-06-30 after AD/LDAP Search + Bind implementation:
 - Task 6 subagent reviews: spec compliant and quality review found no Critical/Important issues.
@@ -386,6 +398,7 @@ See [docs/DOCUMENT_GENERATION.md](docs/DOCUMENT_GENERATION.md) for the full rend
 
 Important current tags:
 - Monetary display fields should use `d.items[i].unitCostFormatted`, `d.items[i].totalAmountFormatted`, `d.subtotalFormatted`, `d.vatAmountFormatted`, and `d.totalAmountFormatted`.
+- Item loop rows expose `d.items[i].rowType`, `d.items[i].isHeading`, and `d.items[i].itemNo`; `d.items[i].lineNo` is blank for heading rows and numbered only for priced item rows.
 - Remark rows should use `d.remarkLine1` and `d.remarkLine2` for the two ruled lines in the Word template.
 - Purpose/purchase method checkbox cells should use precomputed mark tags such as `d.purposeNewMark`, `d.purposeRepairMark`, `d.purchaseByProcurementMark`, and `d.purchaseSelfMark`.
 - Header/footer image placeholders are detected by image alt text containing `{d.companyHeaderImage}` and `{d.companyFooterImage}`.
@@ -395,6 +408,7 @@ Important current tags:
 ## UI Formatting Notes
 
 - PR item table amount columns (`Unit Cost`, `Total Amount`) display plain numeric values with comma separators and two decimals, without a currency prefix.
+- PR create/edit item table has row modes: `รายการ` requires Qty/Unit Cost and affects totals; `หัวข้อ` requires only Description and shows blank non-priced cells.
 - PR create/edit item table uses fixed percentage columns: Description remains the primary wide column, Acct/Qty/Unit Cost use compact cells and numeric inputs that still show values such as `1000` and `100000.00`, and Total Amount/action columns are compact enough to avoid desktop horizontal scroll.
 - New PR item rows start blank. Do not prefill sample Description, Quantity, Unit Cost, or Acct values in the create form.
 - New PR Remark starts blank. Do not prefill sample remark text in the create form.

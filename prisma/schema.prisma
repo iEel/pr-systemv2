@@ -163,6 +163,7 @@ model PurchaseRequestItem {
   id                String   @id @default(cuid()) @db.NVarChar(30)
   purchaseRequestId String @db.NVarChar(30)
   lineNo            Int
+  rowType           String  @default("ITEM") @db.NVarChar(20)
   accountCode       String  @db.NVarChar(80)
   description       String  @db.NVarChar(500)
   quantity          Decimal @db.Decimal(18, 4)

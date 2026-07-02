@@ -315,16 +315,24 @@ export function PRDetail({ detail }: { detail: PurchaseRequestDetail }) {
                 </thead>
                 <tbody>
                   {detail.items.length > 0 ? (
-                    detail.items.map((item) => (
-                      <tr key={item.lineNo}>
-                        <td className={tableCellClass}>{item.lineNo}</td>
-                        <td className={tableCellClass}>{item.accountCode || "-"}</td>
-                        <td className={`${tableCellClass} font-semibold text-ink`}>{item.description}</td>
-                        <td className={`${tableCellClass} text-right`}>{formatQuantity(item.quantity)}</td>
-                        <td className={`${tableCellClass} text-right`}>{formatAmount(item.unitCost)}</td>
-                        <td className={`${tableCellClass} text-right font-bold`}>{formatAmount(item.total)}</td>
-                      </tr>
-                    ))
+                    detail.items.map((item) =>
+                      item.rowType === "HEADING" ? (
+                        <tr className="bg-blue-50/70" key={item.lineNo}>
+                          <td className="border-t border-border px-4 py-3 text-sm font-extrabold text-blue-950" colSpan={6}>
+                            {item.description}
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={item.lineNo}>
+                          <td className={tableCellClass}>{item.displayLineNo}</td>
+                          <td className={tableCellClass}>{item.accountCode || "-"}</td>
+                          <td className={`${tableCellClass} font-semibold text-ink`}>{item.description}</td>
+                          <td className={`${tableCellClass} text-right`}>{formatQuantity(item.quantity)}</td>
+                          <td className={`${tableCellClass} text-right`}>{formatAmount(item.unitCost)}</td>
+                          <td className={`${tableCellClass} text-right font-bold`}>{formatAmount(item.total)}</td>
+                        </tr>
+                      ),
+                    )
                   ) : (
                     <tr>
                       <td className="px-4 py-8 text-center text-sm text-muted" colSpan={6}>

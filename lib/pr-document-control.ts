@@ -584,6 +584,7 @@ export async function reissuePurchaseRequest(id: string) {
             accountCode: item.accountCode,
             description: item.description,
             lineNo: item.lineNo,
+            rowType: item.rowType,
             quantity: item.quantity,
             totalAmount: item.totalAmount,
             unitCost: item.unitCost,

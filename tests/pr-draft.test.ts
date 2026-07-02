@@ -47,6 +47,7 @@ describe("draft purchase request form parsing", () => {
 
     expect(draft.items).toEqual([
       {
+        rowType: "ITEM",
         accountCode: "51510101",
         description: "Server",
         quantity: 2,
@@ -54,6 +55,7 @@ describe("draft purchase request form parsing", () => {
         totalAmount: 2001,
       },
       {
+        rowType: "ITEM",
         accountCode: "51520101",
         description: "SSD",
         quantity: 3,
@@ -105,6 +107,7 @@ describe("draft purchase request form parsing", () => {
 
     expect(draft.items).toEqual([
       {
+        rowType: "ITEM",
         accountCode: "",
         description: "Mini PC",
         quantity: 1,
@@ -112,6 +115,68 @@ describe("draft purchase request form parsing", () => {
         totalAmount: 12500,
       },
     ]);
+  });
+
+  test("allows heading rows without quantity or unit cost and totals only priced items", () => {
+    const draft = parseDraftPurchaseRequestForm(
+      formData({
+        branchId: "br_sonic04",
+        departmentId: "dep_it",
+        divisionId: "div_it",
+        documentDate: "2026-06-28",
+        purpose: "ซื้อใหม่",
+        purchaseMethod: "ฝ่ายจัดซื้อจัดหา",
+        itemRowType: ["HEADING", "ITEM"],
+        itemAccountCode: ["", ""],
+        itemDescription: ["Hardware", "Mini PC"],
+        itemQuantity: ["", "2"],
+        itemUnitCost: ["", "12500"],
+      }),
+    );
+
+    expect(draft.items).toEqual([
+      {
+        rowType: "HEADING",
+        accountCode: "",
+        description: "Hardware",
+        quantity: 0,
+        unitCost: 0,
+        totalAmount: 0,
+      },
+      {
+        rowType: "ITEM",
+        accountCode: "",
+        description: "Mini PC",
+        quantity: 2,
+        unitCost: 12500,
+        totalAmount: 25000,
+      },
+    ]);
+    expect(calculateDraftTotals(draft.items)).toEqual({
+      subtotal: 25000,
+      vatRate: 7,
+      vatAmount: 1750,
+      totalAmount: 26750,
+    });
+  });
+
+  test("requires at least one priced item even when heading rows exist", () => {
+    expect(() =>
+      parseDraftPurchaseRequestForm(
+        formData({
+          branchId: "br_sonic04",
+          departmentId: "dep_it",
+          documentDate: "2026-06-28",
+          purpose: "ซื้อใหม่",
+          purchaseMethod: "ฝ่ายจัดซื้อจัดหา",
+          itemRowType: ["HEADING"],
+          itemAccountCode: [""],
+          itemDescription: ["Software"],
+          itemQuantity: [""],
+          itemUnitCost: [""],
+        }),
+      ),
+    ).toThrow(DraftValidationError);
   });
 
   test("prefers IT department and IT division for new PR defaults", () => {
@@ -129,6 +194,7 @@ describe("draft purchase request form parsing", () => {
   test("starts new PR item defaults without sample product data", () => {
     expect(buildDefaultDraftItems()).toEqual([
       {
+        rowType: "ITEM",
         accountCode: "",
         description: "",
         quantity: "",
@@ -194,6 +260,7 @@ describe("draft purchase request create payload", () => {
     expect(data.items.create).toEqual([
       {
         lineNo: 1,
+        rowType: "ITEM",
         accountCode: "51510101",
         description: "Server",
         quantity: 2,
@@ -202,6 +269,7 @@ describe("draft purchase request create payload", () => {
       },
       {
         lineNo: 2,
+        rowType: "ITEM",
         accountCode: "51520101",
         description: "SSD",
         quantity: 3,
@@ -301,6 +369,7 @@ describe("draft purchase request edit mapping", () => {
       remark: "Draft remark",
       items: [
         {
+          rowType: "ITEM",
           accountCode: "51510101",
           description: "Draft server",
           quantity: 2,
@@ -325,6 +394,7 @@ describe("draft purchase request edit mapping", () => {
         items: [
           {
             lineNo: 2,
+            rowType: "ITEM",
             accountCode: "",
             description: "Support package",
             quantity: "1.0000",
@@ -332,6 +402,7 @@ describe("draft purchase request edit mapping", () => {
           },
           {
             lineNo: 1,
+            rowType: "ITEM",
             accountCode: "51510101",
             description: "License renewal",
             quantity: "3.0000",
@@ -354,12 +425,14 @@ describe("draft purchase request edit mapping", () => {
       remark: "Use same vendor",
       items: [
         {
+          rowType: "ITEM",
           accountCode: "51510101",
           description: "License renewal",
           quantity: 3,
           unitCost: 12000,
         },
         {
+          rowType: "ITEM",
           accountCode: "",
           description: "Support package",
           quantity: 1,
@@ -370,7 +443,23 @@ describe("draft purchase request edit mapping", () => {
   });
 
   test("builds an update payload that preserves draft status and recalculates totals", () => {
-    const data = buildDraftUpdateData(draftInput, { companyId: "co_sonic04", documentRefNo: "SN17-DOCSA011" });
+    const data = buildDraftUpdateData(
+      {
+        ...draftInput,
+        items: [
+          {
+            rowType: "HEADING",
+            accountCode: "",
+            description: "Support",
+            quantity: 0,
+            unitCost: 0,
+            totalAmount: 0,
+          },
+          ...draftInput.items,
+        ],
+      },
+      { companyId: "co_sonic04", documentRefNo: "SN17-DOCSA011" },
+    );
 
     expect(data.purchaseRequest).toMatchObject({
       companyId: "co_sonic04",
@@ -390,6 +479,16 @@ describe("draft purchase request edit mapping", () => {
     expect(data.items).toEqual([
       {
         lineNo: 1,
+        rowType: "HEADING",
+        accountCode: "",
+        description: "Support",
+        quantity: 0,
+        unitCost: 0,
+        totalAmount: 0,
+      },
+      {
+        lineNo: 2,
+        rowType: "ITEM",
         accountCode: "51590101",
         description: "Updated service",
         quantity: 4,

@@ -48,6 +48,7 @@ type PurchaseRequestRenderRecord = {
   createdBy: { displayName: string };
   items: Array<{
     lineNo: number;
+    rowType?: string | null;
     accountCode: string;
     description: string;
     quantity: NumericValue;
@@ -100,6 +101,10 @@ function formatAmount(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+function normalizeItemRowType(value: string | null | undefined): "ITEM" | "HEADING" {
+  return value === "HEADING" ? "HEADING" : "ITEM";
 }
 
 const remarkTemplateLineMaxLength = 78;
@@ -234,15 +239,41 @@ export function buildPurchaseRequestRenderPayload(record: PurchaseRequestRenderR
       .slice()
       .sort((left, right) => left.lineNo - right.lineNo)
       .map((item) => ({
-        lineNo: item.lineNo,
-        accountCode: item.accountCode,
-        description: item.description,
-        quantity: toNumber(item.quantity),
-        unitCost: toNumber(item.unitCost),
-        unitCostFormatted: formatAmount(toNumber(item.unitCost)),
-        totalAmount: toNumber(item.totalAmount),
-        totalAmountFormatted: formatAmount(toNumber(item.totalAmount)),
-      })),
+        ...item,
+        rowType: normalizeItemRowType(item.rowType),
+      }))
+      .reduce<Array<{
+        lineNo: number | "";
+        itemNo: number | "";
+        rowType: "ITEM" | "HEADING";
+        isHeading: boolean;
+        accountCode: string;
+        description: string;
+        quantity: number | "";
+        unitCost: number;
+        unitCostFormatted: string;
+        totalAmount: number;
+        totalAmountFormatted: string;
+      }>>((items, item) => {
+        const isHeading = item.rowType === "HEADING";
+        const itemNo = isHeading ? "" : items.filter((current) => !current.isHeading).length + 1;
+
+        items.push({
+          lineNo: itemNo,
+          itemNo,
+          rowType: item.rowType,
+          isHeading,
+          accountCode: item.accountCode,
+          description: item.description,
+          quantity: isHeading ? "" : toNumber(item.quantity),
+          unitCost: toNumber(item.unitCost),
+          unitCostFormatted: isHeading ? "" : formatAmount(toNumber(item.unitCost)),
+          totalAmount: toNumber(item.totalAmount),
+          totalAmountFormatted: isHeading ? "" : formatAmount(toNumber(item.totalAmount)),
+        });
+
+        return items;
+      }, []),
   };
 }
 

@@ -164,11 +164,18 @@ Suggested fields:
 - `id`
 - `purchaseRequestId`
 - `lineNo`
+- `rowType`
 - `accountCode`
 - `description`
 - `quantity`
 - `unitCost`
 - `totalAmount`
+
+Current rules:
+- `rowType` is `ITEM` or `HEADING`; older/missing values are treated as `ITEM` by app logic.
+- `ITEM` rows are normal priced product/service rows and require Description, Qty, and Unit Cost.
+- `HEADING` rows are grouping rows inside the item table. They require only Description, store `quantity = 0`, `unitCost = 0`, and `totalAmount = 0`, and are excluded from subtotal/VAT/total calculations.
+- `lineNo` remains the physical row order. The PDF render payload numbers only `ITEM` rows so headings do not shift visible item numbers.
 
 ### PurchaseRequestAttachment
 
@@ -292,8 +299,8 @@ Rules:
 
 Backend should calculate and persist:
 
-- Line total: `quantity * unitCost`
-- Subtotal: sum of line totals
+- Line total: `quantity * unitCost` for `ITEM` rows; `HEADING` rows persist zero.
+- Subtotal: sum of `ITEM` line totals only
 - VAT amount: `subtotal * vatRate`
 - Total: `subtotal + vatAmount`
 - Remaining budget: `budgetAmount - usedAmount - reservedAmount`

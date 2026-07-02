@@ -1,4 +1,5 @@
 export type DraftDefaultLineItem = {
+  rowType: "ITEM";
   accountCode: string;
   description: string;
   quantity: "";
@@ -8,6 +9,7 @@ export type DraftDefaultLineItem = {
 export function buildDefaultDraftItems(): DraftDefaultLineItem[] {
   return [
     {
+      rowType: "ITEM",
       accountCode: "",
       description: "",
       quantity: "",
