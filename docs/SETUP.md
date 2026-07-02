@@ -73,7 +73,7 @@ Auth session secret:
 AUTH_SECRET=<generate-a-long-random-secret>
 ```
 
-The app has a dev-only fallback so local MVP testing can start quickly. Set a real `AUTH_SECRET` before production or shared UAT use.
+The app has a dev-only fallback so local MVP testing can start quickly. Set a real `AUTH_SECRET` before production or shared UAT use, and keep the value stable across restarts/deploys. Changing it invalidates existing Auth.js JWT session cookies and users need to sign in again.
 
 Carbone render settings are also read from the local environment. Keep service URLs/tokens local and out of source control.
 
@@ -168,3 +168,14 @@ Check that the Carbone URL and credentials in the local environment are correct,
 ### Draft Preview Does Not Show Latest Browser Edits
 
 Draft preview reads the latest saved SQL Server draft. Use `Save & Preview` on a new draft or `Update & Preview` on an existing draft to persist the browser values and render the PDF in one action.
+
+### Auth.js JWTSessionError: no matching decryption secret
+
+This means the browser still has an Auth.js session cookie encrypted with a different `AUTH_SECRET` than the server is using now. It commonly happens after adding or changing `AUTH_SECRET`, switching between dev/UAT configs, or reusing an old localhost cookie.
+
+Fix:
+
+1. Confirm `.env` has a stable `AUTH_SECRET`.
+2. Restart the running Next.js process so the new secret is loaded.
+3. Clear cookies for `localhost:3000`, especially `authjs.session-token`, `authjs.callback-url`, and `authjs.csrf-token`, or test in an incognito window.
+4. Sign in again.

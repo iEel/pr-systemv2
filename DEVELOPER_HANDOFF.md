@@ -18,6 +18,7 @@ Completed:
 - Premium login page uses a generated transparent IT PR document-control hero illustration in the navy left panel, keeps the form-first mobile order, and intentionally omits trust badges, language switching, password recovery, and decorative status stepper text.
 - SQL Server database `IT_PR_DMS` on the `ALPHA` instance, Prisma schema/migration/seed, and Prisma Client through `@prisma/adapter-mssql`.
 - Auth.js Credentials provider backed by SQL Server `User`; SQL Server `User.role` is the RBAC source of truth.
+- Auth.js JWT/session encryption expects a stable `AUTH_SECRET` in each `.env`; stale browser cookies from an old secret cause `JWTSessionError: no matching decryption secret` until cookies are cleared and the app is restarted with the intended secret.
 - AD/LDAP Search + Bind is implemented for short usernames such as `veerapon.l`; LDAP proves identity, while SQL Server remains the SQL allowlist, active/inactive switch, and role source.
 - Local seeded admin remains an explicit fallback account with `authProvider = LOCAL` and password `admin123`.
 - Auth hardening proxy protects app routes before server components load: anonymous users redirect to `/login?callbackUrl=...`, and authenticated users without route-level admin permissions redirect to `/forbidden`.
@@ -100,6 +101,10 @@ password: <AD password>
 
 Do not commit real `.env` secrets.
 
+Local/UAT session note:
+- Set a stable `AUTH_SECRET` in `.env` before shared testing.
+- After changing `AUTH_SECRET`, restart Next.js/PM2 and clear old Auth.js cookies for the app host before signing in again.
+
 Verification commands:
 
 ```bash
@@ -124,6 +129,11 @@ Latest verified result on 2026-07-02 after premium generated Login hero update:
 Latest user-verified result on 2026-07-02 after PR template Remark font normalization:
 - Active `storage/templates/PR_STANDARD_V1.docx` was updated so the Remark tag runs use the same font family/size treatment as the PR item table.
 - User tested the PR preview/PDF output and confirmed the Remark Thai/English font-size mismatch is resolved.
+
+Latest operational note on 2026-07-02 after Auth.js JWTSessionError investigation:
+- Local `.env` was missing `AUTH_SECRET`; a stable local value was added without exposing the secret.
+- `.env.example` now includes an `AUTH_SECRET` placeholder.
+- `docs/SETUP.md` documents the `no matching decryption secret` recovery path: keep `AUTH_SECRET` stable, restart the app after changes, clear old Auth.js cookies, and sign in again.
 
 Previous verified result on 2026-06-30 after AD/LDAP Search + Bind implementation:
 - Task 6 subagent reviews: spec compliant and quality review found no Critical/Important issues.
