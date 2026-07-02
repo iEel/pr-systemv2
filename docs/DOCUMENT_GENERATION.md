@@ -1,6 +1,6 @@
 # Document Generation
 
-Last updated: 2026-06-30
+Last updated: 2026-07-02
 
 This document is the current source of truth for PR Word templates, Carbone payload fields, PDF preview, and official Issue PR behavior.
 
@@ -178,6 +178,8 @@ The current Word template has two ruled remark rows. Use:
 The app normalizes line breaks and spaces, splits at a preferred word boundary, and keeps each line within the fixed template row length. Very long text is clipped with `...` to avoid spilling into a second page.
 
 Avoid putting `d.remark` directly into the ruled cells unless the template layout is changed to support automatic row growth.
+
+The active `PR_STANDARD_V1.docx` template keeps the `remarkLine1` and `remarkLine2` tag runs on the same font family and size as the item-table text so mixed Thai/English remark output renders consistently in PDF.
 
 ## Checkbox Marks
 

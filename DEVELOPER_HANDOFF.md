@@ -121,6 +121,10 @@ Latest verified result on 2026-07-02 after premium generated Login hero update:
 - Generated asset `public/login-pr-illustration.png` is a transparent PNG cutout created for this project and used by `app/login/page.tsx`.
 - Known warning remains: Prisma/MSSQL emits Node `DEP0123` when TLS `ServerName` is an IP address; current commands still pass.
 
+Latest user-verified result on 2026-07-02 after PR template Remark font normalization:
+- Active `storage/templates/PR_STANDARD_V1.docx` was updated so the Remark tag runs use the same font family/size treatment as the PR item table.
+- User tested the PR preview/PDF output and confirmed the Remark Thai/English font-size mismatch is resolved.
+
 Previous verified result on 2026-06-30 after AD/LDAP Search + Bind implementation:
 - Task 6 subagent reviews: spec compliant and quality review found no Critical/Important issues.
 - `npm test -- tests/ldap-schema-env.test.ts tests/ldap-utils.test.ts tests/ldap-provider.test.ts tests/auth-local-provider.test.ts tests/auth-credentials-provider.test.ts tests/user-management.test.ts tests/user-management-ldap.test.ts tests/admin-settings-page-copy.test.ts tests/docs-ldap.test.ts`: passed, 9 files / 66 tests.

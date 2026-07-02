@@ -184,6 +184,7 @@ Mobile:
 - Header/footer images render from the selected branch profile.
 - Amounts in the PDF show comma separators and two decimals.
 - Remark text stays on the intended ruled lines through `remarkLine1` and `remarkLine2`.
+- Remark Thai/English text uses the same visual font size and family as item-table text after PDF render.
 - Purpose and purchase method checkbox cells show marks only for selected options.
 - Item loop stays inside the item table.
 - Long remark text does not push the PR into an unintended second page.
