@@ -1,6 +1,6 @@
 # Features
 
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 ## Implemented Features
 
@@ -11,6 +11,7 @@ Last updated: 2026-07-01
 - Protected app pages with Auth.js credentials login.
 - Hybrid Local + LDAP Search + Bind authentication on the same login form.
 - Login form starts blank and does not show unsupported language switching or password recovery controls.
+- Login uses a premium split-screen document-control hero with a generated transparent IT PR illustration asset instead of trust badges or a decorative status stepper.
 - SQL Server-backed users and roles.
 - SQL Server remains the allowlist, role, and active/inactive source for LDAP users.
 - Topbar shows authenticated display name and role.

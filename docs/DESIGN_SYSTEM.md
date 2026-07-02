@@ -11,6 +11,7 @@ The interface should feel like a modern premium enterprise document console:
 - Cool slate background.
 - Dense but calm operational layouts.
 - Clear status language for controlled documents.
+- Premium login hero imagery should communicate the PR document workflow directly and sit on the navy panel as a generated transparent asset, not as a pasted rectangular image or fake status stepper.
 
 Avoid old government-form styling: no cramped boxes, stale gray-heavy form walls, or visually noisy borders.
 

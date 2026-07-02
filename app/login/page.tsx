@@ -1,63 +1,34 @@
-import { BarChart3, FileCheck2, FileText, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
+import { LockKeyhole, UserRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Field, inputClass } from "@/components/ui/Field";
 import { loginAction } from "./actions";
 import { LoginSubmitButton, PasswordInput } from "./LoginControls";
 
-const featureItems = [
-  {
-    icon: FileText,
-    title: "ออกเอกสาร PR",
-    body: "สร้างและบันทึกเอกสารขอซื้อได้อย่างรวดเร็ว",
-  },
-  {
-    icon: FileCheck2,
-    title: "จัดการ Template",
-    body: "ใช้แม่แบบเอกสารมาตรฐาน ลดความซ้ำซ้อน",
-  },
-  {
-    icon: BarChart3,
-    title: "ติดตามสถานะเอกสาร",
-    body: "ตรวจสอบความคืบหน้าแบบเรียลไทม์",
-  },
-];
-
 function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <div
-      className={`grid place-items-center rounded-xl bg-blue-600 text-white shadow-[0_10px_24px_rgb(37_99_235_/_0.26)] ${
-        compact ? "h-16 w-16" : "h-14 w-14"
+      className={`grid place-items-center rounded-xl bg-[linear-gradient(135deg,#2563eb,#0f4fb8)] text-white shadow-[0_8px_18px_rgb(15_38_80_/_0.20)] ${
+        compact ? "h-14 w-14" : "h-[3.25rem] w-[3.25rem]"
       }`}
     >
-      <div className="h-8 w-8 rotate-45 rounded-md border-[7px] border-white/95 border-l-blue-200 border-t-blue-300" />
+      <div className={`${compact ? "h-7 w-7" : "h-6 w-6"} rotate-45 rounded-[0.35rem] border-[6px] border-white/95 border-l-blue-200 border-t-blue-300`} />
     </div>
   );
 }
 
-function FeatureCards() {
+function DocumentHeroImage() {
   return (
-    <div className="mt-8 grid gap-4 [@media(min-width:1024px)_and_(max-height:820px)]:mt-5 [@media(min-width:1024px)_and_(max-height:820px)]:gap-3">
-      {featureItems.map((item) => {
-        const Icon = item.icon;
-
-        return (
-          <div
-            className="group flex items-center gap-4 rounded-lg border border-white/[0.14] bg-white/[0.09] p-4 shadow-[0_18px_40px_rgb(0_0_0_/_0.16)] transition-colors duration-200 hover:bg-white/[0.13] [@media(min-width:1024px)_and_(max-height:820px)]:p-3"
-            key={item.title}
-          >
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-white/[0.12] text-blue-50 ring-1 ring-white/[0.12] transition-colors duration-200 group-hover:bg-white/[0.18] [@media(min-width:1024px)_and_(max-height:820px)]:h-10 [@media(min-width:1024px)_and_(max-height:820px)]:w-10">
-              <Icon aria-hidden className="h-6 w-6 [@media(min-width:1024px)_and_(max-height:820px)]:h-5 [@media(min-width:1024px)_and_(max-height:820px)]:w-5" />
-            </div>
-            <div>
-              <div className="text-base font-bold text-white [@media(min-width:1024px)_and_(max-height:820px)]:text-sm">{item.title}</div>
-              <p className="mt-1 text-sm leading-6 text-blue-50/70 [@media(min-width:1024px)_and_(max-height:820px)]:text-xs [@media(min-width:1024px)_and_(max-height:820px)]:leading-5">
-                {item.body}
-              </p>
-            </div>
-          </div>
-        );
-      })}
+    <div className="mt-6 max-w-[39rem] [@media(min-width:1024px)_and_(max-height:820px)]:mt-3">
+      <div className="relative h-[18.5rem] overflow-hidden sm:h-[21rem] lg:h-[20rem] xl:h-[22rem] [@media(min-width:1024px)_and_(max-height:820px)]:h-[16rem]">
+        <div className="absolute inset-x-8 bottom-6 h-24 rounded-full bg-blue-500/18 blur-3xl" />
+        <div className="absolute inset-x-4 bottom-2 h-16 rounded-full bg-slate-950/24 blur-2xl" />
+        <img
+          alt="PR document workflow illustration"
+          className="relative h-full w-full scale-[1.28] object-contain opacity-[0.98] drop-shadow-[0_30px_46px_rgb(2_8_23_/_0.36)] [@media(min-width:1024px)_and_(max-height:820px)]:scale-[1.18]"
+          src="/login-pr-illustration.png"
+        />
+      </div>
     </div>
   );
 }
@@ -73,10 +44,10 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
   return (
     <main className="min-h-screen overflow-hidden bg-slate-50 text-ink lg:h-screen">
       <div className="grid min-h-screen lg:h-screen lg:grid-cols-[42%_58%]">
-        <section className="relative overflow-hidden bg-[linear-gradient(135deg,#2563eb_0%,#4338ca_48%,#172554_100%)] px-6 py-8 text-white sm:px-10 lg:px-12 lg:py-6">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_16%,rgb(255_255_255_/_0.16),transparent_18rem),radial-gradient(circle_at_82%_72%,rgb(14_165_233_/_0.24),transparent_24rem)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgb(255_255_255_/_0.11)_1px,transparent_0)] [background-size:28px_28px] [mask-image:linear-gradient(to_bottom,transparent,black_14%,black_82%,transparent)]" />
-          <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-slate-950/35 to-transparent" />
+        <section className="relative order-2 overflow-hidden bg-[linear-gradient(145deg,#061634_0%,#082a60_48%,#020817_100%)] px-6 py-8 text-white sm:px-10 lg:order-1 lg:px-12 lg:py-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_16%,rgb(59_130_246_/_0.22),transparent_20rem),radial-gradient(circle_at_86%_78%,rgb(14_165_233_/_0.16),transparent_24rem)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(rgb(255_255_255_/_0.055)_1px,transparent_1px),linear-gradient(90deg,rgb(255_255_255_/_0.045)_1px,transparent_1px)] [background-size:42px_42px] [mask-image:linear-gradient(to_bottom,transparent,black_16%,black_84%,transparent)]" />
+          <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-slate-950/45 to-transparent" />
 
           <div className="relative flex min-h-full flex-col">
             <div className="flex items-center gap-4">
@@ -87,56 +58,47 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
               </div>
             </div>
 
-            <div className="mt-12 max-w-xl lg:mt-10 [@media(min-width:1024px)_and_(max-height:820px)]:mt-6">
-              <h1 className="text-[2.35rem] font-bold leading-tight tracking-normal text-white sm:text-5xl lg:text-[2.35rem] [@media(min-width:1024px)_and_(max-height:820px)]:text-[2rem]">
-                IT PR Document Management
+            <div className="mt-12 max-w-xl lg:mt-9 [@media(min-width:1024px)_and_(max-height:820px)]:mt-5">
+              <h1 className="max-w-[12ch] text-[2.45rem] font-bold leading-tight tracking-normal text-white sm:text-5xl lg:text-[2.55rem] [@media(min-width:1024px)_and_(max-height:820px)]:text-[2.1rem]">
+                IT PR Document Control
               </h1>
-              <p className="mt-5 text-xl font-medium leading-8 text-blue-50/[0.86] lg:mt-3 lg:text-lg [@media(min-width:1024px)_and_(max-height:820px)]:text-base">
-                ระบบบริหารจัดการเอกสารขอซื้อ (Purchase Request)
+              <p className="mt-5 max-w-[38ch] text-lg font-medium leading-8 text-blue-50/[0.84] lg:mt-3 [@media(min-width:1024px)_and_(max-height:820px)]:text-base">
+                ระบบบริหารจัดการเอกสารขอซื้อ สำหรับงานเอกสาร PR ที่ต้องควบคุมสถานะและตรวจสอบย้อนหลังได้
               </p>
-              <div className="mt-8 h-1 w-12 rounded-full bg-blue-500 lg:mt-5 [@media(min-width:1024px)_and_(max-height:820px)]:mt-4" />
-              <div className="mt-8 lg:mt-7 [@media(min-width:1024px)_and_(max-height:820px)]:mt-4">
-                <h2 className="text-xl font-bold text-white [@media(min-width:1024px)_and_(max-height:820px)]:text-lg">ยินดีต้อนรับสู่ระบบบริหารจัดการเอกสาร PR</h2>
-                <p className="mt-3 max-w-[40ch] text-base leading-7 text-blue-50/[0.82] [@media(min-width:1024px)_and_(max-height:820px)]:mt-2 [@media(min-width:1024px)_and_(max-height:820px)]:line-clamp-2 [@media(min-width:1024px)_and_(max-height:820px)]:text-sm [@media(min-width:1024px)_and_(max-height:820px)]:leading-6">
-                  เพิ่มประสิทธิภาพการทำงาน ลดขั้นตอน และติดตามสถานะเอกสารได้อย่างง่ายดาย
-                </p>
-              </div>
+              <div className="mt-7 h-1 w-12 rounded-full bg-blue-400 lg:mt-5 [@media(min-width:1024px)_and_(max-height:820px)]:mt-4" />
 
-              <FeatureCards />
+              <DocumentHeroImage />
             </div>
 
             <div className="mt-auto hidden pl-12 text-sm font-medium text-blue-50/70 lg:block">© 2026 IT PR Document Management System</div>
           </div>
         </section>
 
-        <section className="relative flex min-h-screen items-center justify-center px-5 py-8 sm:px-8 lg:h-screen lg:min-h-0 lg:px-12 lg:py-6">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgb(15_38_80_/_0.055)_1px,transparent_0)] [background-size:20px_20px]" />
+        <section className="relative order-1 flex min-h-screen items-center justify-center px-5 py-8 sm:px-8 lg:order-2 lg:h-screen lg:min-h-0 lg:px-12 lg:py-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgb(15_38_80_/_0.048)_1px,transparent_0)] [background-size:22px_22px]" />
+          <div className="absolute inset-y-0 left-0 hidden w-px bg-gradient-to-b from-transparent via-slate-200 to-transparent lg:block" />
 
-          <div className="relative w-full max-w-[39rem]">
-            <div className="rounded-xl border border-border bg-white/[0.96] p-6 shadow-[0_24px_70px_rgb(15_38_80_/_0.12)] sm:p-9 lg:p-7">
+          <div className="relative w-full max-w-[34.5rem]">
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-[0_14px_32px_rgb(15_38_80_/_0.09)] sm:p-9 lg:p-8">
               <div className="text-center">
-                <div className="mx-auto grid h-24 w-24 place-items-center rounded-full bg-surface lg:h-20 lg:w-20">
+                <div className="mx-auto grid h-20 w-20 place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200">
                   <BrandMark compact />
                 </div>
-                <h2 className="mt-6 text-3xl font-bold tracking-normal text-ink lg:mt-4 lg:text-2xl">Sign In to Your Account</h2>
-                <p className="mt-3 text-sm leading-6 text-muted lg:mt-2">เข้าสู่ระบบเพื่อใช้งาน IT PR Document Management</p>
-                <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-primary lg:mt-3">
-                  <UserRound aria-hidden className="h-4 w-4" />
-                  Local user / password
-                </div>
+                <h2 className="mt-5 text-2xl font-bold tracking-normal text-ink">เข้าสู่ระบบ IT PR</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">Document Control Workspace</p>
               </div>
 
-              <div className="my-7 h-px bg-border lg:my-5" />
+              <div className="my-6 h-px bg-border" />
 
-              <form action={loginAction} className="space-y-5 lg:space-y-4">
-                <Field label="Username or Email">
+              <form action={loginAction} className="space-y-4">
+                <Field label="Username">
                   <div className="relative">
                     <UserRound aria-hidden className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
                     <input
                       autoComplete="off"
                       className={inputClass("min-h-12 pl-12 text-base placeholder:text-slate-500")}
                       name="username"
-                      placeholder="Enter username or email"
+                      placeholder="Enter username"
                       required
                     />
                   </div>
@@ -159,22 +121,10 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
                 ) : null}
 
                 <LoginSubmitButton />
-
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 lg:p-3">
-                  <div className="flex gap-3">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-100 text-primary">
-                      <ShieldCheck aria-hidden className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-blue-900">ระบบนี้สำหรับเจ้าหน้าที่ IT Department เท่านั้น</div>
-                      <div className="mt-1 text-sm leading-6 text-blue-800">ข้อมูลของคุณจะถูกเข้ารหัสและจัดเก็บอย่างปลอดภัย</div>
-                    </div>
-                  </div>
-                </div>
               </form>
             </div>
 
-            <div className="mt-7 text-center text-sm text-muted lg:mt-4">
+            <div className="mt-6 text-center text-sm text-muted lg:mt-4">
               <div className="inline-flex items-center gap-2 font-semibold">
                 <LockKeyhole aria-hidden className="h-4 w-4" />
                 For IT Department only

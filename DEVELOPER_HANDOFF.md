@@ -1,6 +1,6 @@
 # Developer Handoff
 
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 ## Project Summary
 
@@ -14,7 +14,8 @@ Product and visual direction are documented in [PRODUCT.md](PRODUCT.md) and [DES
 
 Completed:
 - Next.js App Router, TypeScript, Tailwind CSS, and focused Vitest tests.
-- Modern premium app shell with sticky desktop sidebar, mobile drawer navigation, topbar, responsive navigation, blank-state login UI, and protected app pages.
+- Modern premium app shell with sticky desktop sidebar, mobile drawer navigation, topbar, responsive navigation, premium generated-image login UI, and protected app pages.
+- Premium login page uses a generated transparent IT PR document-control hero illustration in the navy left panel, keeps the form-first mobile order, and intentionally omits trust badges, language switching, password recovery, and decorative status stepper text.
 - SQL Server database `IT_PR_DMS` on the `ALPHA` instance, Prisma schema/migration/seed, and Prisma Client through `@prisma/adapter-mssql`.
 - Auth.js Credentials provider backed by SQL Server `User`; SQL Server `User.role` is the RBAC source of truth.
 - AD/LDAP Search + Bind is implemented for short usernames such as `veerapon.l`; LDAP proves identity, while SQL Server remains the SQL allowlist, active/inactive switch, and role source.
@@ -50,6 +51,7 @@ Completed:
 - Phase 5 baseline hardening runbooks and deployment scaffolds for Ubuntu, nginx, PM2, backup/restore, monitoring, rate limiting, retention, and Carbone incidents.
 - Carbone client errors are now classified as config, HTTP, network, or timeout with safe user-facing messages instead of leaking long render response bodies.
 - Source-control hygiene is set for GitHub publishing: environment files, build output, local QA captures, and generated runtime document storage are ignored, while seed templates under `storage/templates/` and branch header/footer baselines under `storage/company-assets/` remain tracked for tests and first-run setup.
+- Login hero asset `public/login-pr-illustration.png` is a generated transparent project asset and should remain tracked with the UI.
 - Ubuntu/nginx/PM2 deployment uses `/var/www/it-pr-dms/current` as the active release path, with runtime document storage kept outside the web root at `/var/lib/it-pr-dms/storage`.
 - App listen port is documented as `PORT=3000` in `.env.example`; PM2 loads `.env` before starting Next.js, and nginx upstream must be kept in sync when changing ports.
 - Production UI copy no longer labels the connected app as Phase 1 sample data; PR list filtering now uses `lib/pr-filters.ts` instead of `lib/sample-data.ts`.
@@ -107,6 +109,17 @@ npm run build
 npx prisma validate
 npm run pdf:qa -- --input storage/generated/ITPR_2606008.pdf --expected-pages 1
 ```
+
+Latest verified result on 2026-07-02 after premium generated Login hero update:
+- `npm test -- tests/login-page-copy.test.ts`: passed, 1 file / 2 tests.
+- `npm test`: passed, 50 files / 246 tests.
+- `npm run typecheck`: passed.
+- `npx prisma validate`: passed.
+- `npm run build`: passed.
+- `git diff --check`: passed with Windows LF/CRLF warnings only.
+- Chrome visual smoke on `/login`: desktop 1366x768 fits one viewport with no horizontal overflow; mobile 390x844 keeps the login form before the hero panel; username starts blank; unsupported `Forgot password?` and language switch controls remain hidden; decorative `Draft / Preview / Issue PR / Signed` stepper text is absent.
+- Generated asset `public/login-pr-illustration.png` is a transparent PNG cutout created for this project and used by `app/login/page.tsx`.
+- Known warning remains: Prisma/MSSQL emits Node `DEP0123` when TLS `ServerName` is an IP address; current commands still pass.
 
 Previous verified result on 2026-06-30 after AD/LDAP Search + Bind implementation:
 - Task 6 subagent reviews: spec compliant and quality review found no Critical/Important issues.
@@ -291,6 +304,7 @@ Previous verified result on 2026-06-30 after Auth Hardening proxy:
 | `scripts/pdf-visual-qa.mjs` | CLI for `npm run pdf:qa`, Poppler page rendering, and QA report artifact writing. |
 | `ecosystem.config.cjs` | PM2 production process scaffold for Ubuntu deployment. |
 | `deploy/nginx/it-pr-dms.conf` | nginx reverse proxy scaffold with upload size, rate limit, and render timeout baseline. |
+| `public/login-pr-illustration.png` | Generated transparent login hero asset for the IT PR document workflow. |
 | `storage/templates/PR_STANDARD_V1.docx` | Active PR Word template used for official PDF generation. |
 | `tests/*` | Focused unit tests for PR payloads, document control, templates, auth/RBAC, company master, and route helpers. |
 
@@ -382,7 +396,7 @@ Important current tags:
 - Running Number Settings and Budget Master table rows use stable database ids as React keys to avoid console key warnings when rendering `<tbody>` row lists.
 - Audit Logs keeps the Selected Event panel stacked above the table until very wide screens (`1800px+`) so desktop users do not have to horizontally scroll to reach `Inspect`; long metadata values such as SHA-256 hashes wrap inside the detail panel.
 - Desktop app navigation uses a sticky `100dvh` sidebar with internal nav scrolling, while mobile continues to use the fixed drawer.
-- Login page starts with blank username input and hides unsupported language-switch/password-recovery controls.
+- Login page starts with blank username input, hides unsupported language-switch/password-recovery controls, and uses a generated transparent IT PR document-control hero image instead of trust badges or `Draft / Preview / Issue PR / Signed` status-strip decoration.
 - PR Detail groups document commands into `Next action`, `Review & files`, and `Danger zone`, and shows download/attach actions directly on Generated PDF, Signed PDF/Scan, and Quotation attachment cards.
 - PR Detail `Next action` uses a compact command strip inside the summary header; avoid returning it to a tall callout/card because it overpowers document information.
 

@@ -1,6 +1,6 @@
 # QA Checklist
 
-Last updated: 2026-06-30
+Last updated: 2026-07-02
 
 Use this before handing work to another developer or preparing a release.
 
@@ -65,6 +65,7 @@ Expected:
 - LDAP login rejects email/domain usernames and accepts short usernames only.
 - Login username field is blank on initial render; it is not prefilled with `admin`.
 - Login page does not show unsupported `Forgot password?` or language-switch controls.
+- Login left panel uses the generated transparent `public/login-pr-illustration.png` hero asset and does not show decorative `Draft / Preview / Issue PR / Signed` stepper text.
 - Topbar shows the authenticated user's display name and role.
 - Logout returns the user to login state.
 - Protected pages are not reachable anonymously.
@@ -336,6 +337,7 @@ Mobile:
 
 - App does not look like a legacy government form.
 - Login fits a desktop viewport cleanly.
+- Login generated hero image blends into the navy panel without a visible rectangular image background.
 - Navy shell is strong but does not flood the content area.
 - Cards and tables use restrained borders and shadows.
 - Buttons have clear hierarchy.
