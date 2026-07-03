@@ -16,7 +16,8 @@
 - Modify: `tests/pr-list-actions.test.ts`
 
 - [x] Add a source-level regression test that expects `components/pr/PRList.tsx` to expose a `Table | Board` view switch.
-- [x] Assert that the board renders workflow columns for Draft, Generated, Printed, and Signed.
+- [x] Assert that the board renders active workflow columns for Draft, Generated, and Printed.
+- [x] Assert that Signed, Cancelled, and Reissued are grouped into a Completed/Archived archive area.
 - [x] Assert that the board uses existing lifecycle URLs such as Preview, Issue PR, Mark Printed, Upload Signed, and Clone as Draft.
 - [x] Run `npm test -- tests/pr-list-actions.test.ts` and verify the new test fails before implementation.
 
@@ -27,8 +28,9 @@
 
 - [x] Add `viewMode` client state with a segmented `Table` / `Board` control.
 - [x] Keep filters shared by both views.
-- [x] Render Board columns for active workflow statuses: Draft, Generated, Printed, Signed.
-- [x] Put Cancelled/Reissued into a compact archived group below the main columns when matching rows exist.
+- [x] Render Board columns for active workflow statuses: Draft, Generated, and Printed.
+- [x] Put Signed, Cancelled, and Reissued into a compact Completed/Archived group below the main columns.
+- [x] Default the archive group to Latest Signed and cap the preview so a large signed history does not dominate the board.
 - [x] Make cards dense and operational: PR No., company/branch, total, date, creator, and next action.
 - [x] Use explicit quick-action links/forms only; do not add drag-and-drop status changes.
 

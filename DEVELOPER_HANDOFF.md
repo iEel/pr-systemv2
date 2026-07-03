@@ -1,6 +1,6 @@
 # Developer Handoff
 
-Last updated: 2026-07-02
+Last updated: 2026-07-03
 
 ## Project Summary
 
@@ -23,7 +23,7 @@ Completed:
 - Local seeded admin remains an explicit fallback account with `authProvider = LOCAL` and password `admin123`.
 - Auth hardening proxy protects app routes before server components load: anonymous users redirect to `/login?callbackUrl=...`, and authenticated users without route-level admin permissions redirect to `/forbidden`.
 - DB-backed PR list, dashboard recent PR embed, PR detail, draft create, and draft edit.
-- PR Documents now supports `Table | Board` views on the same filtered page. Table keeps the dense list workflow; Board groups PRs by active workflow status with read-only quick actions and no drag-and-drop status mutation.
+- PR Documents now supports `Table | Board` views on the same filtered page. Table keeps the dense list workflow; Board groups active Draft/Generated/Printed workflow rows separately from Completed/Archived Signed/Cancelled/Reissued rows, with read-only quick actions and no drag-and-drop status mutation.
 - PR Documents row actions now use real links: detail, draft/generated PDF download, and a More menu with lifecycle shortcuts including Upload Quotation.
 - PR Detail is now a command center with clear `Next action`, `Review & files`, and `Danger zone` groups instead of inactive lifecycle buttons.
 - Server-side PR totals, validation, and audit events for draft create/update.
@@ -117,9 +117,11 @@ npx prisma validate
 npm run pdf:qa -- --input storage/generated/ITPR_2606008.pdf --expected-pages 1
 ```
 
-Latest verified result on 2026-07-03 after PR Documents Kanban Board view:
+Latest verified result on 2026-07-03 after PR Documents Board archive refinement:
 - `/pr` now has a client-side `Table | Board` switch. Existing search/company/branch/status filters feed both views.
-- Board view groups active workflow rows into Draft, Generated, Printed, and Signed columns, shows Cancelled/Reissued in a compact archived group, and keeps status changes read-only through explicit lifecycle links rather than drag-and-drop mutation.
+- Board view groups active workflow rows into Draft, Generated, and Printed columns.
+- Completed/Archived groups Signed, Cancelled, and Reissued into tabs below the active board; it defaults to Latest Signed and caps the archive preview to keep large signed history from stretching the workflow board.
+- Status movement remains read-only through explicit lifecycle links rather than drag-and-drop mutation.
 - Board cards expose PR No., company/branch, document date, total, creator, preview, clone, and next lifecycle action.
 - `npm test -- tests/pr-list-actions.test.ts`: passed, 1 file / 3 tests.
 - `npm run typecheck`: passed.
@@ -452,7 +454,7 @@ Important current tags:
 - Audit Logs keeps the Selected Event panel stacked above the table until very wide screens (`1800px+`) so desktop users do not have to horizontally scroll to reach `Inspect`; long metadata values such as SHA-256 hashes wrap inside the detail panel.
 - Desktop app navigation uses a sticky `100dvh` sidebar with internal nav scrolling, while mobile continues to use the fixed drawer.
 - Login page starts with blank username input, hides unsupported language-switch/password-recovery controls, and uses a generated transparent IT PR document-control hero image instead of trust badges or `Draft / Preview / Issue PR / Signed` status-strip decoration.
-- PR Documents Board view is a workflow scan surface, not a replacement for Reports or Dashboard: Draft, Generated, Printed, and Signed are the active columns; Cancelled/Reissued are grouped below; status changes still go through explicit lifecycle commands.
+- PR Documents Board view is a workflow scan surface, not a replacement for Reports or Dashboard: Draft, Generated, and Printed are the active columns; Signed, Cancelled, and Reissued are grouped below in Completed/Archived tabs; status changes still go through explicit lifecycle commands.
 - PR Detail groups document commands into `Next action`, `Review & files`, and `Danger zone`, and shows download/attach actions directly on Generated PDF, Signed PDF/Scan, and Quotation attachment cards.
 - PR Detail `Next action` uses a compact command strip inside the summary header; avoid returning it to a tall callout/card because it overpowers document information.
 

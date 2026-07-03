@@ -16,8 +16,14 @@ import { getStatusConfig } from "@/lib/status";
 import { formatDate, formatTHB } from "@/lib/utils";
 
 const statuses: Array<PRStatus | "All"> = ["All", "Draft", "Generated", "Printed", "Signed", "Cancelled", "Reissued"];
-const boardColumns: PRStatus[] = ["Draft", "Generated", "Printed", "Signed"];
-const archivedStatuses: PRStatus[] = ["Cancelled", "Reissued"];
+const activeBoardColumns: PRStatus[] = ["Draft", "Generated", "Printed"];
+type ArchiveStatus = Extract<PRStatus, "Signed" | "Cancelled" | "Reissued">;
+const completedArchiveStatuses: ArchiveStatus[] = ["Signed", "Cancelled", "Reissued"];
+const archivePanelLabels: Record<ArchiveStatus, string> = {
+  Signed: "Latest Signed",
+  Cancelled: "Latest Cancelled",
+  Reissued: "Latest Reissued",
+};
 type ViewMode = "table" | "board";
 
 function nextBoardAction(request: PurchaseRequestListItem) {
@@ -38,12 +44,14 @@ export function PRList({ requests }: { requests: PurchaseRequestListItem[] }) {
   const [branch, setBranch] = useState("All");
   const [status, setStatus] = useState<PRStatus | "All">("All");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [archiveStatus, setArchiveStatus] = useState<ArchiveStatus>("Signed");
 
   const companies = useMemo(() => ["All", ...Array.from(new Set(requests.map((item) => item.company)))], [requests]);
   const branches = useMemo(() => ["All", ...Array.from(new Set(requests.map((item) => item.branch)))], [requests]);
   const rows = useMemo(() => filterPurchaseRequests(requests, { search, company, branch, status }), [branch, company, requests, search, status]);
-  const workflowRows = useMemo(() => rows.filter((item) => boardColumns.includes(item.status)), [rows]);
-  const archivedRows = useMemo(() => rows.filter((item) => archivedStatuses.includes(item.status)), [rows]);
+  const workflowRows = useMemo(() => rows.filter((item) => activeBoardColumns.includes(item.status)), [rows]);
+  const archiveRows = useMemo(() => rows.filter((item) => completedArchiveStatuses.includes(item.status as ArchiveStatus)), [rows]);
+  const visibleArchiveRows = useMemo(() => archiveRows.filter((item) => item.status === archiveStatus), [archiveRows, archiveStatus]);
 
   return (
     <div className="space-y-5">
@@ -116,7 +124,14 @@ export function PRList({ requests }: { requests: PurchaseRequestListItem[] }) {
       {viewMode === "table" ? (
         <PRTable requests={requests} rows={rows} />
       ) : (
-        <PRBoard archivedRows={archivedRows} requests={requests} workflowRows={workflowRows} />
+        <PRBoard
+          archiveRows={archiveRows}
+          archiveStatus={archiveStatus}
+          requests={requests}
+          setArchiveStatus={setArchiveStatus}
+          visibleArchiveRows={visibleArchiveRows}
+          workflowRows={workflowRows}
+        />
       )}
     </div>
   );
@@ -198,22 +213,32 @@ function PRTable({ requests, rows }: { requests: PurchaseRequestListItem[]; rows
 }
 
 function PRBoard({
-  archivedRows,
+  archiveRows,
+  archiveStatus,
   requests,
+  setArchiveStatus,
+  visibleArchiveRows,
   workflowRows,
 }: {
-  archivedRows: PurchaseRequestListItem[];
+  archiveRows: PurchaseRequestListItem[];
+  archiveStatus: ArchiveStatus;
   requests: PurchaseRequestListItem[];
+  setArchiveStatus: (status: ArchiveStatus) => void;
+  visibleArchiveRows: PurchaseRequestListItem[];
   workflowRows: PurchaseRequestListItem[];
 }) {
+  const archivePreviewLimit = 10;
+  const archivePreviewRows = visibleArchiveRows.slice(0, archivePreviewLimit);
+  const hiddenArchiveCount = Math.max(visibleArchiveRows.length - archivePreviewLimit, 0);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-muted">Board view แสดง {workflowRows.length + archivedRows.length} รายการ จาก {requests.length} รายการ</p>
+        <p className="text-sm font-semibold text-muted">Board view แสดง {workflowRows.length + archiveRows.length} รายการ จาก {requests.length} รายการ</p>
         <div className="text-xs font-semibold text-muted">Read-only workflow view • ใช้คำสั่งเอกสารจากหน้า Detail</div>
       </div>
-      <div className="grid gap-4 xl:grid-cols-4">
-        {boardColumns.map((columnStatus) => {
+      <div className="grid gap-4 xl:grid-cols-3">
+        {activeBoardColumns.map((columnStatus) => {
           const statusInfo = getStatusConfig(columnStatus);
           const columnRows = workflowRows.filter((item) => item.status === columnStatus);
 
@@ -239,17 +264,65 @@ function PRBoard({
           );
         })}
       </div>
-      {archivedRows.length > 0 ? (
-        <section className="rounded-lg border border-border bg-panel">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <div className="text-sm font-bold text-ink">Cancelled / Reissued</div>
-            <Badge tone="neutral">{archivedRows.length} รายการ</Badge>
+      <section className="rounded-lg border border-border bg-panel">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-sm font-bold text-ink">Completed / Archived</div>
+            <div className="mt-1 text-xs font-semibold text-muted">
+              งานที่จบแล้วหรือพักไว้ แยกจาก workflow หลักเพื่อไม่ให้คอลัมน์ Signed ยาวเกินไป
+            </div>
           </div>
-          <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
-            {archivedRows.map((request) => <PRBoardCard compact key={request.id} request={request} />)}
+          <Badge tone="neutral">{archiveRows.length} รายการ</Badge>
+        </div>
+        <div className="flex flex-wrap gap-2 border-b border-border px-4 py-3">
+          {completedArchiveStatuses.map((item) => {
+            const statusInfo = getStatusConfig(item);
+            const isActive = archiveStatus === item;
+            const count = archiveRows.filter((request) => request.status === item).length;
+
+            return (
+              <button
+                aria-pressed={isActive}
+                className={`inline-flex min-h-9 items-center justify-center gap-2 rounded-md border px-3 py-1.5 text-sm font-bold transition-colors ${
+                  isActive
+                    ? "border-primary bg-primary text-white"
+                    : "border-border bg-panel text-muted hover:bg-surface hover:text-ink"
+                }`}
+                key={item}
+                onClick={() => setArchiveStatus(item)}
+                type="button"
+              >
+                {statusInfo.label}
+                <span className={`rounded-full px-2 py-0.5 text-xs ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-muted"}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="p-3">
+          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div className="text-sm font-bold text-ink">{archivePanelLabels[archiveStatus]}</div>
+            <div className="text-xs font-semibold text-muted">
+              แสดง {archivePreviewRows.length} จาก {visibleArchiveRows.length} รายการ
+            </div>
           </div>
-        </section>
-      ) : null}
+          {archivePreviewRows.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {archivePreviewRows.map((request) => <PRBoardCard compact key={request.id} request={request} />)}
+            </div>
+          ) : (
+            <div className="rounded-md border border-dashed border-border bg-slate-50 px-3 py-8 text-center text-sm font-semibold text-muted">
+              ไม่มี PR ในสถานะนี้
+            </div>
+          )}
+          {hiddenArchiveCount > 0 ? (
+            <div className="mt-3 rounded-md border border-border bg-slate-50 px-3 py-2 text-xs font-semibold text-muted">
+              ยังมีอีก {hiddenArchiveCount} รายการในสถานะนี้ ใช้ Table view หรือ Status filter เพื่อดูรายการทั้งหมดแบบเต็มตาราง
+            </div>
+          ) : null}
+        </div>
+      </section>
     </div>
   );
 }

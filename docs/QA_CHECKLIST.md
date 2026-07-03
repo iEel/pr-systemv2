@@ -110,8 +110,9 @@ Mobile:
 - PR list row More menu includes `Clone as Draft`.
 - PR list row More menu includes `Upload Quotation` for Draft/Generated/Printed/Signed rows.
 - PR Documents `Table | Board` switch preserves the same search/company/branch/status filters.
-- PR Documents Board view shows Draft, Generated, Printed, and Signed columns with clear counts and empty-column states.
-- PR Documents Board view shows Cancelled/Reissued rows in a compact archived section instead of mixing them into the active workflow.
+- PR Documents Board view shows active Draft, Generated, and Printed columns with clear counts and empty-column states.
+- PR Documents Board view keeps Signed, Cancelled, and Reissued rows in the `Completed / Archived` tab section instead of mixing them into the active workflow.
+- PR Documents Board view defaults the archive section to `Latest Signed` and caps the preview so large signed history does not create an excessively tall board.
 - PR Documents Board cards show PR No., company/branch, date, total, creator, preview, clone, and next lifecycle action.
 - PR Documents Board view is read-only for status movement; there is no drag-and-drop status change path.
 - PR detail shows `Clone as Draft` for an existing PR.
