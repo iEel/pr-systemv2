@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { readFileSync } from "node:fs";
 import { buildPurchaseRequestRowActions } from "../lib/pr-list-actions";
 
 describe("PR list row actions", () => {
@@ -40,5 +41,27 @@ describe("PR list row actions", () => {
         { href: "/pr/pr_printed/cancel", label: "Cancel PR" },
       ]),
     );
+  });
+
+  test("PR Documents exposes a read-only board view with lifecycle quick actions", () => {
+    const source = readFileSync("components/pr/PRList.tsx", "utf8");
+
+    expect(source).toContain("viewMode");
+    expect(source).toContain("Table");
+    expect(source).toContain("Board");
+    expect(source).toContain("boardColumns");
+    expect(source).toContain("workflowRows");
+    expect(source).toContain("archivedRows");
+    expect(source).toContain("Draft");
+    expect(source).toContain("Generated");
+    expect(source).toContain("Printed");
+    expect(source).toContain("Signed");
+    expect(source).toContain("Cancelled / Reissued");
+    expect(source).toContain("Preview Draft");
+    expect(source).toContain("Issue PR");
+    expect(source).toContain("Mark Printed");
+    expect(source).toContain("Upload Signed");
+    expect(source).toContain("Clone as Draft");
+    expect(source).not.toContain("onDragEnd");
   });
 });

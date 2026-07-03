@@ -1,6 +1,6 @@
 # Features
 
-Last updated: 2026-07-02
+Last updated: 2026-07-03
 
 ## Implemented Features
 
@@ -29,6 +29,9 @@ Last updated: 2026-07-02
 - SQL Server-backed PR list.
 - Search by PR number, company, branch, department, division, or creator.
 - Filters by company, branch, and status.
+- `Table | Board` view switch on the same filtered PR Documents page.
+- Board view groups active workflow PRs into Draft, Generated, Printed, and Signed columns, with Cancelled/Reissued shown in a compact archived group.
+- Board cards show PR number, company/branch, date, total, creator, preview, clone, and the next lifecycle action without supporting drag-and-drop status changes.
 - Responsive table wrapper for dense columns.
 - Detail route loads by real PR id.
 - Row actions and status badges follow the PR lifecycle.
