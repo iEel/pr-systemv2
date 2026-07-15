@@ -46,4 +46,38 @@ Results:
 ## Limitations
 
 - The migration was not applied to a database, per Task 1 scope.
-- `npm run prisma:generate` was attempted but could not complete because an existing `next dev --port 3001` process for this worktree held `node_modules/.prisma/client/query_engine-windows.dll.node` open, causing an `EPERM` rename failure. The process was not stopped because it was already running before this task.
+- `npm run prisma:generate` now passes after the controller stopped the worktree dev server that had held `node_modules/.prisma/client/query_engine-windows.dll.node` open.
+
+## P2 Regression Coverage Follow-up
+
+Fix commit: `b356f762a457c322455a5545a44b9941ec4acb69` - `Add recurring PR migration regression coverage`
+
+The structural migration test normalizes SQL whitespace before asserting all six check constraints, both composite unique constraints, the filtered unique generated-PR index, all recurring foreign keys and delete actions, catalog idempotency guards, and nullable Prisma `SetNull` relation declarations.
+
+### RED Evidence
+
+After adding the assertions, a controlled temporary mutation changed `RecurringPurchaseRequestRun_purchaseRequestId_fkey` from `ON DELETE SET NULL` to `ON DELETE NO ACTION`. The command below failed only in `keeps every recurring foreign key and its delete behavior`, with the missing generated-PR `SET NULL` contract in the assertion output. The migration was then restored exactly.
+
+```powershell
+npm test -- tests/recurring-pr-schema.test.ts
+```
+
+### GREEN And Verification Evidence
+
+```powershell
+npm test -- tests/recurring-pr-schema.test.ts tests/auth-permissions.test.ts tests/auth-route-access.test.ts
+npx prisma validate
+npm run prisma:generate
+npm test
+npm run typecheck
+git diff --check
+```
+
+Results:
+
+- Focused suite passed: 3 files, 12 tests.
+- Prisma schema validation passed.
+- Prisma Client generation passed after the dev server was stopped.
+- Full suite passed: 56 files, 293 tests. Node emitted TLS ServerName deprecation warnings, but Vitest completed successfully.
+- TypeScript typecheck passed.
+- Diff check passed.
