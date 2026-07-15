@@ -13,4 +13,11 @@ describe("PR category SQL Server schema", () => {
     expect(migration).toContain("PurchaseRequest_categoryId_fkey");
     expect(migration).toContain("cat_subscription_renewal");
   });
+
+  test("terminates the CATCH rollback before THROW", () => {
+    const migration = readFileSync("prisma/migrations/000009_pr_category_master/migration.sql", "utf8");
+    const catchBlock = migration.split("BEGIN CATCH")[1] || "";
+
+    expect(catchBlock).toMatch(/END;\s+THROW;/);
+  });
 });
