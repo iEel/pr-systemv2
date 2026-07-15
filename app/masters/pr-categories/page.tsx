@@ -230,7 +230,7 @@ export default async function PrCategoriesPage({
           }
         />
         <MasterDataNav />
-        {impact ? deactivationImpactPanel({ confirmationToken: createCategoryDeactivationConfirmation({ categoryId: impact.category.id, scheduleIds: impact.activeSchedules.map((schedule) => schedule.id) }), filters, impact }) : null}
+        {impact?.category.isActive ? deactivationImpactPanel({ confirmationToken: createCategoryDeactivationConfirmation({ categoryId: impact.category.id, categoryIsActive: impact.category.isActive, categoryUpdatedAt: impact.category.updatedAt, scheduleIds: impact.activeSchedules.map((schedule) => schedule.id) }), filters, impact }) : null}
         {filterForm({ filters })}
         {createCategoryForm({ filters })}
         {categoryTable({ filters, rows })}

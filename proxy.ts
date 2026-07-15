@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { normalizeRole } from "@/lib/auth/permissions";
+import { requireAuthSecret } from "@/lib/auth/secret";
 import {
   buildForbiddenRedirectUrl,
   buildLoginRedirectUrl,
@@ -9,7 +10,7 @@ import {
   requiredPermissionForPath,
 } from "@/lib/auth/route-access";
 
-const authSecret = process.env.AUTH_SECRET || "dev-only-it-pr-dms-auth-secret-change-before-production";
+const authSecret = requireAuthSecret();
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

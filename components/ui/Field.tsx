@@ -1,11 +1,25 @@
 import { cn } from "@/lib/utils";
+import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from "react";
 
-export function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+type FieldControlProps = {
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean | "false" | "true";
+};
+
+export function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
+  const errorId = `field-error-${useId().replace(/:/g, "")}`;
+  const control = error && isValidElement<FieldControlProps>(children)
+    ? cloneElement(children as ReactElement<FieldControlProps>, {
+        "aria-describedby": [children.props["aria-describedby"], errorId].filter(Boolean).join(" "),
+        "aria-invalid": true,
+      })
+    : children;
+
   return (
     <label className="grid gap-1.5 text-sm font-semibold text-ink">
       <span>{label}</span>
-      {children}
-      {error ? <span className="text-xs font-semibold text-red-700" role="alert">{error}</span> : null}
+      {control}
+      {error ? <span className="text-xs font-semibold text-red-700" id={errorId} role="alert">{error}</span> : null}
     </label>
   );
 }

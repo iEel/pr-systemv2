@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { verifySqlServerCredentials } from "./lib/auth/credentials-provider";
 import { normalizeRole } from "./lib/auth/permissions";
+import { requireAuthSecret } from "./lib/auth/secret";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {
@@ -57,6 +58,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: {
     strategy: "jwt",
   },
-  secret: process.env.AUTH_SECRET || "dev-only-it-pr-dms-auth-secret-change-before-production",
+  secret: requireAuthSecret(),
   trustHost: true,
 });

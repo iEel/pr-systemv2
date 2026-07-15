@@ -215,7 +215,7 @@ export async function getPrCategoryDeactivationImpact(categoryId: string) {
   await requirePermission("MASTER_DATA_MANAGE");
   const id = requiredCategoryId(categoryId);
   const category = await prisma.purchaseRequestCategory.findUnique({
-    select: { code: true, id: true, name: true },
+    select: { code: true, id: true, isActive: true, name: true, updatedAt: true },
     where: { id },
   });
   if (!category) throw new Error("Category not found");
@@ -330,7 +330,10 @@ export async function setPrCategoryActiveFromFormData(formData: FormData, isActi
 
   return prisma.$transaction(
     async (tx) => {
-      const category = await tx.purchaseRequestCategory.findUnique({ where: { id: categoryId } });
+      const category = await tx.purchaseRequestCategory.findUnique({
+        select: { code: true, id: true, isActive: true, name: true, updatedAt: true },
+        where: { id: categoryId },
+      });
 
       if (!category) {
         throw new Error("Category not found");
@@ -345,12 +348,17 @@ export async function setPrCategoryActiveFromFormData(formData: FormData, isActi
           });
       if (!isActive && (intendedIsActive !== "0" || !verifyCategoryDeactivationConfirmation({
         categoryId,
+        categoryIsActive: category.isActive,
+        categoryUpdatedAt: category.updatedAt,
         scheduleIds: affectedSchedules.map((schedule) => schedule.id),
         token: confirmationToken,
       }))) {
         throw new Error("Category deactivation confirmation is invalid or expired");
       }
-      const updated = await tx.purchaseRequestCategory.update({ data: { isActive }, where: { id: categoryId } });
+      const updated = await tx.purchaseRequestCategory.update({
+        data: { isActive },
+        where: isActive ? { id: categoryId } : { id: categoryId, isActive: true, updatedAt: category.updatedAt },
+      });
 
       await createCategoryAudit(tx, {
         action: isActive ? "PR category activated" : "PR category deactivated",

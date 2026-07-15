@@ -40,8 +40,9 @@ export function RecurringScheduleForm({ action, cancelHref, initialValue, mode, 
 
   return (
     <form action={formAction} className="space-y-5">
-      <input name="sourcePurchaseRequestId" type="hidden" value={initialValue.sourcePurchaseRequestId} />
+      <input aria-describedby={state.fieldErrors.sourcePurchaseRequestId ? "source-purchase-request-error" : undefined} name="sourcePurchaseRequestId" type="hidden" value={initialValue.sourcePurchaseRequestId} />
       {state.message ? <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" role="alert">{state.message}</div> : null}
+      {state.fieldErrors.sourcePurchaseRequestId ? <p className="text-sm font-semibold text-red-700" id="source-purchase-request-error" role="alert">{state.fieldErrors.sourcePurchaseRequestId}</p> : null}
       <Card>
         <div className="mb-4">
           <h2 className="text-base font-bold text-ink">Schedule name and responsible user</h2>
@@ -64,7 +65,7 @@ export function RecurringScheduleForm({ action, cancelHref, initialValue, mode, 
           <p className="mt-1 text-sm leading-6 text-muted">A Draft is created ahead of the annual renewal date for review.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Renewal month *">
+          <Field error={state.fieldErrors.renewalMonth} label="Renewal month *">
             <select aria-invalid={Boolean(state.fieldErrors.renewalMonth)} className={inputClass()} name="renewalMonth" onChange={(event) => setRenewalMonth(Number(event.target.value))} required value={renewalMonth}>
               {Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}
             </select>
@@ -80,13 +81,13 @@ export function RecurringScheduleForm({ action, cancelHref, initialValue, mode, 
           <p className="mt-1 text-sm leading-6 text-muted">This is the controlled document snapshot used when the next Draft is prepared.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Field label="Company / Branch *">
+          <Field error={state.fieldErrors.branchId} label="Company / Branch *">
             <select aria-invalid={Boolean(state.fieldErrors.branchId)} className={inputClass()} defaultValue={initialValue.branchId} name="branchId" required>
               <option value="">Select company / branch</option>
               {options.branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.companyDisplayName} / {branch.name}</option>)}
             </select>
           </Field>
-          <Field label="Department *">
+          <Field error={state.fieldErrors.departmentId} label="Department *">
             <select aria-invalid={Boolean(state.fieldErrors.departmentId)} className={inputClass()} name="departmentId" onChange={(event) => { setDepartmentId(event.target.value); setDivisionId(resetDivisionForDepartmentChange(divisionId)); }} required value={departmentId}>
               <option value="">Select department</option>
               {options.departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
@@ -98,7 +99,7 @@ export function RecurringScheduleForm({ action, cancelHref, initialValue, mode, 
               {divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}
             </select>
           </Field>
-          <Field label="PR Category *">
+          <Field error={state.fieldErrors.categoryId} label="PR Category *">
             <select aria-invalid={Boolean(state.fieldErrors.categoryId)} className={inputClass()} defaultValue={initialValue.categoryId} name="categoryId" required>
               <option value="">Select category</option>
               {options.categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}

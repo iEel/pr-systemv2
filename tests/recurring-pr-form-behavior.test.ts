@@ -30,6 +30,16 @@ describe("Recurring schedule form behavior", () => {
     expect(source).toContain("aria-invalid");
   });
 
+  test("passes every visible server-validated error into its rendered field", () => {
+    const source = readFileSync("components/recurring-pr/RecurringScheduleForm.tsx", "utf8");
+
+    for (const field of ["name", "responsibleUserId", "renewalMonth", "renewalDay", "leadDays", "branchId", "departmentId", "divisionId", "categoryId", "purpose", "purchaseMethod"]) {
+      expect(source).toContain(`error={state.fieldErrors.${field}}`);
+    }
+    expect(source).toContain('id="source-purchase-request-error"');
+    expect(source).toContain("state.fieldErrors.items");
+  });
+
   test("pairs the sticky actions header with its sticky cells", () => {
     const source = readFileSync("components/recurring-pr/RecurringScheduleList.tsx", "utf8");
 
