@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pause, Pencil, Play, ShieldAlert } from "lucide-react";
+import { Pause, Pencil, Play, RotateCw, ShieldAlert } from "lucide-react";
 import { AppFrame } from "@/components/app/AppFrame";
 import { Badge } from "@/components/ui/Badge";
 import { Card, SectionHeader } from "@/components/ui/Card";
@@ -9,7 +9,7 @@ import { requireCurrentUser } from "@/lib/auth/current-user";
 import { hasPermission } from "@/lib/auth/permissions";
 import { getRecurringScheduleDetail } from "@/lib/recurring-pr";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { pauseRecurringScheduleAction, resumeRecurringScheduleAction } from "../actions";
+import { pauseRecurringScheduleAction, resumeRecurringScheduleAction, retryRecurringRunAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +44,7 @@ export default async function RecurringScheduleDetailPage({ params }: { params: 
             </Card>
             <TableWrap>
               <div className="border-b border-border px-4 py-3"><h2 className="text-base font-bold text-ink">Run history</h2></div>
-              <div className="overflow-x-auto"><table className="w-full min-w-[780px] border-collapse"><thead><tr>{["Year", "Renewal", "Draft date", "Status", "Generated Draft", "Note"].map((head) => <th className={`${tableHeaderClass} px-4 py-3`} key={head}>{head}</th>)}</tr></thead><tbody>{detail.runs.length ? detail.runs.map((run) => <tr className="align-top" key={run.id}><td className={tableCellClass}>{run.occurrenceYear}</td><td className={`${tableCellClass} whitespace-nowrap`}>{formatDate(run.renewalDate)}</td><td className={`${tableCellClass} whitespace-nowrap`}>{formatDate(run.scheduledDraftDate)}</td><td className={tableCellClass}><Badge tone={statusTone(run.status)}>{run.status}</Badge></td><td className={tableCellClass}>{run.purchaseRequest ? <Link className="font-semibold text-primary hover:underline" href={`/pr/${run.purchaseRequest.id}`}>{run.purchaseRequest.label}</Link> : "-"}</td><td className={`${tableCellClass} max-w-xs text-sm text-muted`}>{run.status === "FAILED" ? "Could not complete the recurring draft. Review the schedule references and configuration before the next action." : "-"}</td></tr>) : <tr><td className="px-4 py-10 text-center text-sm text-muted" colSpan={6}>No runs recorded yet.</td></tr>}</tbody></table></div>
+              <div className="overflow-x-auto"><table className="w-full min-w-[860px] border-collapse"><thead><tr>{["Year", "Renewal", "Draft date", "Status", "Generated Draft", "Note", "Actions"].map((head) => <th className={`${tableHeaderClass} px-4 py-3`} key={head}>{head}</th>)}</tr></thead><tbody>{detail.runs.length ? detail.runs.map((run) => <tr className="align-top" key={run.id}><td className={tableCellClass}>{run.occurrenceYear}</td><td className={`${tableCellClass} whitespace-nowrap`}>{formatDate(run.renewalDate)}</td><td className={`${tableCellClass} whitespace-nowrap`}>{formatDate(run.scheduledDraftDate)}</td><td className={tableCellClass}><Badge tone={statusTone(run.status)}>{run.status}</Badge></td><td className={tableCellClass}>{run.purchaseRequest ? <Link className="font-semibold text-primary hover:underline" href={`/pr/${run.purchaseRequest.id}`}>{run.purchaseRequest.label}</Link> : "-"}</td><td className={`${tableCellClass} max-w-xs text-sm text-muted`}>{run.status === "FAILED" ? "Could not complete the recurring draft. Review the schedule references and configuration before the next action." : "-"}</td><td className={`${tableCellClass} whitespace-nowrap`}>{canManage && run.status === "FAILED" && !run.purchaseRequest ? <form action={retryRecurringRunAction.bind(null, run.id)}><button aria-label="Retry failed run" className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-semibold text-primary hover:bg-surface" type="submit"><RotateCw aria-hidden className="h-4 w-4" />Retry</button></form> : "-"}</td></tr>) : <tr><td className="px-4 py-10 text-center text-sm text-muted" colSpan={7}>No runs recorded yet.</td></tr>}</tbody></table></div>
             </TableWrap>
           </div>
           <aside className="space-y-5">

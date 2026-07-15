@@ -64,7 +64,7 @@ export async function retryRecurringRunAction(runId: string) {
   const retried = await retryRecurringPurchaseRequestRun(runId);
   revalidatePath("/recurring-pr");
   revalidatePath(`/recurring-pr/${retried.scheduleId}`);
-  revalidatePath("/purchase-requests");
-  revalidatePath(`/purchase-requests/${retried.id}`);
-  redirect(`/purchase-requests/${retried.id}`);
+  revalidatePath("/pr");
+  revalidatePath(`/pr/${retried.id}`);
+  redirect(`/pr/${retried.id}`);
 }

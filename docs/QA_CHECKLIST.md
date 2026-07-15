@@ -386,6 +386,7 @@ Mobile:
 
 ## Future QA Additions
 
+- After Task 8 applies `000010_annual_recurring_pr`, run SQL Server integration coverage for a late recurring-worker transaction failure and concurrent cron/manual Retry claims; confirm rollback leaves no run, Draft, budget reservation, or audit rows and contention leaves exactly one annual run and Draft.
 - Visual regression screenshots for generated PDFs.
 - Browser automation for the full draft-preview-issue-print-sign lifecycle.
 - Concurrency test for multiple users issuing PRs at the same time.

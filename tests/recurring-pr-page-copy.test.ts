@@ -40,6 +40,9 @@ describe("Recurring PR pages", () => {
     expect(list).toContain("No recurring schedules match this view");
     expect(list).toContain("Actions");
     expect(detail).toContain("Run history");
-    expect(detail).not.toContain("Retry");
+    expect(detail).toContain("retryRecurringRunAction");
+    expect(detail).toContain('"Actions"');
+    expect(detail).toContain('canManage && run.status === "FAILED" && !run.purchaseRequest');
+    expect(detail).toContain("Retry failed run");
   });
 });

@@ -157,3 +157,101 @@ test("retries the same FAILED run only after permission and transitions it throu
   expect(tx.recurringPurchaseRequestRun.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "PROCESSING" }), where: { id: "run_failed", purchaseRequestId: null, status: "FAILED" } }));
   expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "Recurring run retried", actorId: "admin_1" }) }));
 });
+
+function installTransactionalState({ failAutomatedAudit = false, initialRun }: { failAutomatedAudit?: boolean; initialRun?: Record<string, any> } = {}) {
+  let state = {
+    audits: [] as any[],
+    drafts: [] as any[],
+    reserved: 0,
+    runs: initialRun ? [structuredClone(initialRun)] : [] as any[],
+  };
+  const clone = () => structuredClone(state);
+  const runForOccurrence = () => state.runs.find((run) => run.scheduleId === "schedule_1" && run.occurrenceYear === 2026) || null;
+
+  mocks.prisma.recurringPurchaseRequestSchedule = { findUnique: vi.fn().mockResolvedValue(schedule()) };
+  mocks.prisma.recurringPurchaseRequestRun = {
+    findUnique: vi.fn(async (args: any) => {
+      if (args.where.id) return state.runs.find((run) => run.id === args.where.id) || null;
+      return runForOccurrence();
+    }),
+  };
+  mocks.prisma.$transaction = vi.fn(async (work: (tx: any) => Promise<unknown>) => {
+    const pending = clone();
+    const tx = {
+      auditLog: {
+        create: async ({ data }: any) => {
+          if (failAutomatedAudit && data.action === "Automated recurring Draft created") throw new Error("audit write failed");
+          pending.audits.push(data);
+        },
+      },
+      budget: { reserve: (amount: number) => { pending.reserved += amount; } },
+      purchaseRequest: {
+        create: async ({ data }: any) => {
+          const created = { id: `pr_${pending.drafts.length + 1}`, ...data };
+          pending.drafts.push(created);
+          return { id: created.id };
+        },
+      },
+      recurringPurchaseRequestRun: {
+        create: async ({ data }: any) => {
+          if (pending.runs.some((run) => run.scheduleId === data.scheduleId && run.occurrenceYear === data.occurrenceYear)) {
+            throw new Prisma.PrismaClientKnownRequestError("duplicate", { clientVersion: "test", code: "P2002" });
+          }
+          const created = { id: `run_${pending.runs.length + 1}`, ...data };
+          pending.runs.push(created);
+          return { id: created.id };
+        },
+        update: async ({ data, where }: any) => {
+          const run = pending.runs.find((candidate) => candidate.id === where.id)!;
+          Object.assign(run, data);
+        },
+        updateMany: async ({ data, where }: any) => {
+          const run = pending.runs.find((candidate) => candidate.id === where.id && candidate.status === where.status && candidate.purchaseRequestId === where.purchaseRequestId);
+          if (!run) return { count: 0 };
+          Object.assign(run, data);
+          return { count: 1 };
+        },
+      },
+      recurringPurchaseRequestSchedule: { update: async () => undefined },
+    };
+    const result = await work(tx);
+    state = pending;
+    return result;
+  });
+  mocks.reserveDraftBudget.mockImplementation(async (tx: any, reference: { totalAmount: number }) => {
+    tx.budget.reserve(reference.totalAmount);
+    return { budgetStatus: "MATCHED" };
+  });
+  return { state: () => state };
+}
+
+test("rolls back run, Draft, budget reservation, and audit writes when a late worker audit fails", async () => {
+  const database = installTransactionalState({ failAutomatedAudit: true });
+
+  await expect(processRecurringScheduleOccurrence("schedule_1", new Date("2026-08-02T00:00:00.000Z"))).rejects.toThrow("audit write failed");
+  expect(database.state()).toEqual({ audits: [], drafts: [], reserved: 0, runs: [] });
+});
+
+test("allows one retry claim while concurrent cron skips the same FAILED annual run without partial writes", async () => {
+  const database = installTransactionalState({
+    initialRun: {
+      id: "run_failed",
+      occurrenceYear: 2026,
+      purchaseRequestId: null,
+      renewalDate: new Date("2026-09-01T00:00:00.000Z"),
+      scheduleId: "schedule_1",
+      scheduledDraftDate: new Date("2026-08-02T00:00:00.000Z"),
+      status: "FAILED",
+    },
+  });
+
+  const [cron, retry] = await Promise.all([
+    processRecurringScheduleOccurrence("schedule_1", new Date("2026-08-02T00:00:00.000Z")),
+    retryRecurringPurchaseRequestRun("run_failed"),
+  ]);
+
+  expect(cron).toEqual({ outcome: "SKIPPED", runId: "run_failed", scheduleId: "schedule_1" });
+  expect(retry).toMatchObject({ id: "pr_1", runId: "run_failed", scheduleId: "schedule_1" });
+  expect(database.state()).toMatchObject({ drafts: [{ id: "pr_1" }], reserved: 107, runs: [{ id: "run_failed", purchaseRequestId: "pr_1", status: "SUCCEEDED" }] });
+  expect(database.state().audits).toHaveLength(2);
+});

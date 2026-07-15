@@ -44,9 +44,12 @@ test("retry action delegates to the guarded worker, refreshes recurring and PR p
   expect(mocks.retryRecurringPurchaseRequestRun).toHaveBeenCalledWith("run_failed");
   expect(mocks.revalidatePath).toHaveBeenCalledWith("/recurring-pr");
   expect(mocks.revalidatePath).toHaveBeenCalledWith("/recurring-pr/schedule_1");
-  expect(mocks.revalidatePath).toHaveBeenCalledWith("/purchase-requests");
-  expect(mocks.revalidatePath).toHaveBeenCalledWith("/purchase-requests/pr_recurring");
-  expect(mocks.redirect).toHaveBeenCalledWith("/purchase-requests/pr_recurring");
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/pr");
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/pr/pr_recurring");
+  expect(mocks.redirect).toHaveBeenCalledWith("/pr/pr_recurring");
+  expect(mocks.revalidatePath).not.toHaveBeenCalledWith("/purchase-requests");
+  expect(mocks.revalidatePath).not.toHaveBeenCalledWith("/purchase-requests/pr_recurring");
+  expect(mocks.redirect).not.toHaveBeenCalledWith("/purchase-requests/pr_recurring");
 });
 
 test("recurring schedule actions delegate each supported mutation and refresh schedule routes", () => {
