@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   createRecurringScheduleFromFormData: vi.fn(),
   redirect: vi.fn(),
   revalidatePath: vi.fn(),
+  retryRecurringPurchaseRequestRun: vi.fn(),
   setRecurringScheduleStatus: vi.fn(),
   updateRecurringScheduleFromFormData: vi.fn(),
 }));
@@ -17,11 +18,15 @@ vi.mock("@/lib/recurring-pr", () => ({
   setRecurringScheduleStatus: mocks.setRecurringScheduleStatus,
   updateRecurringScheduleFromFormData: mocks.updateRecurringScheduleFromFormData,
 }));
+vi.mock("@/lib/recurring-pr-worker", () => ({
+  retryRecurringPurchaseRequestRun: mocks.retryRecurringPurchaseRequestRun,
+}));
 
 import {
   createRecurringScheduleAction,
   pauseRecurringScheduleAction,
   resumeRecurringScheduleAction,
+  retryRecurringRunAction,
   updateRecurringScheduleAction,
 } from "../app/recurring-pr/actions";
 
@@ -30,6 +35,18 @@ beforeEach(() => {
   mocks.createRecurringScheduleFromFormData.mockResolvedValue({ id: "schedule_1" });
   mocks.setRecurringScheduleStatus.mockResolvedValue({ id: "schedule_1" });
   mocks.updateRecurringScheduleFromFormData.mockResolvedValue({ id: "schedule_1" });
+  mocks.retryRecurringPurchaseRequestRun.mockResolvedValue({ id: "pr_recurring", runId: "run_failed", scheduleId: "schedule_1" });
+});
+
+test("retry action delegates to the guarded worker, refreshes recurring and PR paths, and opens the Draft", async () => {
+  await retryRecurringRunAction("run_failed");
+
+  expect(mocks.retryRecurringPurchaseRequestRun).toHaveBeenCalledWith("run_failed");
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/recurring-pr");
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/recurring-pr/schedule_1");
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/purchase-requests");
+  expect(mocks.revalidatePath).toHaveBeenCalledWith("/purchase-requests/pr_recurring");
+  expect(mocks.redirect).toHaveBeenCalledWith("/purchase-requests/pr_recurring");
 });
 
 test("recurring schedule actions delegate each supported mutation and refresh schedule routes", () => {

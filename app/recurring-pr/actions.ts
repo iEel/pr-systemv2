@@ -9,6 +9,7 @@ import {
   setRecurringScheduleStatus,
   updateRecurringScheduleFromFormData,
 } from "@/lib/recurring-pr";
+import { retryRecurringPurchaseRequestRun } from "@/lib/recurring-pr-worker";
 
 function revalidateRecurringSchedule(id: string) {
   revalidatePath("/recurring-pr");
@@ -57,4 +58,13 @@ export async function resumeRecurringScheduleAction(id: string) {
   const updated = await setRecurringScheduleStatus(id, "ACTIVE");
   revalidateRecurringSchedule(updated.id);
   redirect(`/recurring-pr/${updated.id}`);
+}
+
+export async function retryRecurringRunAction(runId: string) {
+  const retried = await retryRecurringPurchaseRequestRun(runId);
+  revalidatePath("/recurring-pr");
+  revalidatePath(`/recurring-pr/${retried.scheduleId}`);
+  revalidatePath("/purchase-requests");
+  revalidatePath(`/purchase-requests/${retried.id}`);
+  redirect(`/purchase-requests/${retried.id}`);
 }
