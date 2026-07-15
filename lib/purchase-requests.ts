@@ -63,6 +63,10 @@ export type PurchaseRequestDetail = {
     date: string;
     detail: string;
   }>;
+  reissue: {
+    categoryId: string;
+    categories: Array<{ id: string; label: string }>;
+  };
 };
 
 type NumericValue = string | number | { toString(): string };
@@ -81,6 +85,8 @@ type PurchaseRequestRecord = {
 };
 
 type PurchaseRequestDetailRecord = PurchaseRequestRecord & {
+  categoryId: string | null;
+  category: { id: string; isActive: boolean } | null;
   refNo: string | null;
   requiredDate: Date | null;
   purpose: string;
@@ -117,6 +123,12 @@ type PurchaseRequestAuditRecord = {
   metadataJson?: string | null;
   createdAt: Date;
   actor: { displayName: string } | null;
+};
+
+type PurchaseRequestCategoryOptionRecord = {
+  id: string;
+  code: string;
+  name: string;
 };
 
 const dbStatusToUiStatus: Record<string, PRStatus> = {
@@ -193,7 +205,11 @@ export function mapPurchaseRequestRecordToListItem(record: PurchaseRequestRecord
   };
 }
 
-export function mapPurchaseRequestDetailRecord(record: PurchaseRequestDetailRecord, auditLogs: PurchaseRequestAuditRecord[]): PurchaseRequestDetail {
+export function mapPurchaseRequestDetailRecord(
+  record: PurchaseRequestDetailRecord,
+  auditLogs: PurchaseRequestAuditRecord[],
+  reissueCategories: PurchaseRequestCategoryOptionRecord[] = [],
+): PurchaseRequestDetail {
   return {
     header: {
       id: record.id,
@@ -251,6 +267,13 @@ export function mapPurchaseRequestDetailRecord(record: PurchaseRequestDetailReco
       date: audit.createdAt.toISOString(),
       detail: readAuditDetail(audit),
     })),
+    reissue: {
+      categoryId: record.category?.isActive ? record.category.id : "",
+      categories: reissueCategories.map((category) => ({
+        id: category.id,
+        label: `${category.code} - ${category.name}`,
+      })),
+    },
   };
 }
 
@@ -276,6 +299,7 @@ export async function getPurchaseRequestDetail(id: string) {
     include: {
       attachments: { orderBy: [{ type: "asc" }, { version: "desc" }] },
       branch: true,
+      category: true,
       company: true,
       createdBy: true,
       department: true,
@@ -286,14 +310,23 @@ export async function getPurchaseRequestDetail(id: string) {
 
   if (!record) return null;
 
-  const auditLogs = await prisma.auditLog.findMany({
-    include: { actor: true },
-    orderBy: { createdAt: "asc" },
-    where: {
-      entityId: id,
-      entityType: "PurchaseRequest",
-    },
-  });
+  const [auditLogs, reissueCategories] = await Promise.all([
+    prisma.auditLog.findMany({
+      include: { actor: true },
+      orderBy: { createdAt: "asc" },
+      where: {
+        entityId: id,
+        entityType: "PurchaseRequest",
+      },
+    }),
+    record.status === "CANCELLED"
+      ? prisma.purchaseRequestCategory.findMany({
+          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+          select: { code: true, id: true, name: true },
+          where: { isActive: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
-  return mapPurchaseRequestDetailRecord(record, auditLogs);
+  return mapPurchaseRequestDetailRecord(record, auditLogs, reissueCategories);
 }

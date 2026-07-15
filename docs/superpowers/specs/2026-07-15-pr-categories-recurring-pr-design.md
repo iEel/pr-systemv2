@@ -68,6 +68,8 @@ Add nullable `PurchaseRequest.categoryId` and a relation to `PurchaseRequestCate
 
 The database field remains nullable for legacy compatibility. Server validation requires an active category for every new PR and for edits to a Draft once the category feature is deployed. Controlled historical PRs without a category remain readable and renderable.
 
+Clone and Reissue reuse the source category automatically only while it remains active. If a Reissue source has no category or its category is inactive, the Reissue command requires the user to select an active category before creating the replacement Draft. The server validates the final category inside the Reissue transaction and never creates a replacement Draft with a null or inactive category.
+
 Initial editable seed categories:
 
 - `HARDWARE` - Hardware & Equipment
@@ -319,7 +321,7 @@ Operations documentation must include:
 - new PR category requirement
 - legacy PR read/render compatibility
 - Draft edit requiring category before Save/Issue
-- category preservation through clone and reissue
+- active-category preservation through clone and reissue, including explicit Reissue selection for legacy or inactive source categories
 - category filters, Reports, XLSX, and Carbone payload mapping
 
 ### Schedule Date Tests

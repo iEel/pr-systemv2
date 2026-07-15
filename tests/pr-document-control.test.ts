@@ -1,6 +1,27 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  prisma: { $transaction: vi.fn() },
+  requirePermission: vi.fn(),
+  reserveDraftBudget: vi.fn(),
+  reverseUsedBudget: vi.fn(),
+}));
+
+vi.mock("../lib/auth/current-user", () => ({
+  requirePermission: mocks.requirePermission,
+}));
+
+vi.mock("../lib/budget-tracking", () => ({
+  buildBudgetReference: (input: unknown) => input,
+  reserveDraftBudget: mocks.reserveDraftBudget,
+  reverseUsedBudget: mocks.reverseUsedBudget,
+}));
+
+vi.mock("../lib/prisma", () => ({
+  prisma: mocks.prisma,
+}));
 import {
   assertCancellableStatus,
   assertQuotationUploadableStatus,
@@ -11,10 +32,59 @@ import {
   buildQuotationStoragePath,
   buildSignedDocumentStoragePath,
   normalizeCancelReason,
+  reissuePurchaseRequest,
   resolveDocumentStoragePath,
   validateQuotationUploadFile,
   validateSignedUploadFile,
 } from "../lib/pr-document-control";
+
+function buildReissueSource({ categoryId = "cat_hardware", categoryIsActive = true }: { categoryId?: string | null; categoryIsActive?: boolean } = {}) {
+  return {
+    id: "pr_cancelled",
+    branchId: "br_sonic04",
+    categoryId,
+    category: categoryId ? { id: categoryId, isActive: categoryIsActive } : null,
+    companyId: "co_sonic04",
+    departmentId: "dep_it",
+    divisionId: null,
+    documentDate: new Date("2026-07-01T00:00:00.000Z"),
+    items: [],
+    prNo: "ITPR_2607001",
+    purchaseMethod: "ฝ่ายจัดซื้อจัดหา",
+    purpose: "ซื้อใหม่",
+    refNo: "SN17-DOCSA011",
+    remark: null,
+    requiredDate: null,
+    status: "CANCELLED",
+    subtotal: 100,
+    totalAmount: 107,
+    vatAmount: 7,
+    vatRate: 7,
+  };
+}
+
+function useReissueTransaction(original = buildReissueSource()) {
+  const tx = {
+    auditLog: { create: vi.fn().mockResolvedValue({ id: "audit_1" }) },
+    purchaseRequest: {
+      create: vi.fn().mockResolvedValue({ id: "pr_replacement" }),
+      findUnique: vi.fn().mockResolvedValue(original),
+      update: vi.fn().mockResolvedValue({ id: original.id }),
+    },
+    purchaseRequestCategory: {
+      findFirst: vi.fn(),
+    },
+  };
+
+  mocks.prisma.$transaction.mockImplementation(async (callback: (txArg: typeof tx) => unknown) => callback(tx));
+  return tx;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.requirePermission.mockResolvedValue({ id: "user_admin" });
+  mocks.reserveDraftBudget.mockResolvedValue({ budgetStatus: "TRACKED" });
+});
 
 describe("document-control helpers", () => {
   test("resolves document storage paths only inside the storage directory", () => {
@@ -155,9 +225,46 @@ describe("document-control helpers", () => {
     expect(source).toContain("budgetStatus");
   });
 
-  test("reissue preserves the original category in its replacement draft", () => {
-    const source = readFileSync("lib/pr-document-control.ts", "utf8");
+  test("reissue validates and reuses an active source category", async () => {
+    const tx = useReissueTransaction();
+    tx.purchaseRequestCategory.findFirst.mockResolvedValue({ id: "cat_hardware" });
 
-    expect(source).toContain("categoryId: original.categoryId");
+    await reissuePurchaseRequest("pr_cancelled");
+
+    expect(tx.purchaseRequestCategory.findFirst).toHaveBeenCalledWith({
+      select: { id: true },
+      where: { id: "cat_hardware", isActive: true },
+    });
+    expect(tx.purchaseRequest.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ categoryId: "cat_hardware" }),
+    }));
+  });
+
+  test("reissue accepts an explicitly selected active category for an uncategorized source", async () => {
+    const tx = useReissueTransaction(buildReissueSource({ categoryId: null }));
+    tx.purchaseRequestCategory.findFirst.mockResolvedValue({ id: "cat_service_maintenance" });
+
+    await reissuePurchaseRequest("pr_cancelled", "cat_service_maintenance");
+
+    expect(tx.purchaseRequest.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ categoryId: "cat_service_maintenance" }),
+    }));
+  });
+
+  test("reissue rejects a missing category before creating a replacement draft", async () => {
+    const tx = useReissueTransaction(buildReissueSource({ categoryId: null }));
+
+    await expect(reissuePurchaseRequest("pr_cancelled")).rejects.toThrow("PR category is required");
+
+    expect(tx.purchaseRequest.create).not.toHaveBeenCalled();
+  });
+
+  test("reissue rejects an inactive submitted or fallback category before creating a replacement draft", async () => {
+    const tx = useReissueTransaction(buildReissueSource({ categoryId: "cat_inactive", categoryIsActive: false }));
+    tx.purchaseRequestCategory.findFirst.mockResolvedValue(null);
+
+    await expect(reissuePurchaseRequest("pr_cancelled", "cat_inactive")).rejects.toThrow("PR category is not available");
+
+    expect(tx.purchaseRequest.create).not.toHaveBeenCalled();
   });
 });

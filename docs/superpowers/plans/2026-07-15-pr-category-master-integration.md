@@ -14,7 +14,7 @@
 - Keep `PurchaseRequest.categoryId` nullable in SQL Server so legacy controlled PRs remain readable and renderable.
 - Require an active category for new Draft create and Draft edit on the server, not only in the browser.
 - Display a missing legacy category as `Not categorized`.
-- Preserve category through Clone and Reissue.
+- Preserve an active category through Clone and Reissue; Reissue requires explicit active-category selection when the source is uncategorized or inactive.
 - Referenced categories are deactivated, never physically deleted.
 - Category code becomes immutable after the category is referenced; name, description, sort order, and active state remain editable.
 - Reuse `MASTER_DATA_MANAGE`; do not add another category permission.
@@ -399,10 +399,14 @@ git commit -m "Add PR category admin console"
 **Files:**
 - Modify: `tests/pr-draft.test.ts`
 - Modify: `tests/pr-document-control.test.ts`
+- Modify: `tests/purchase-request-detail.test.ts`
 - Modify: `tests/pr-form-workflow-copy.test.ts`
 - Modify: `lib/pr-draft.ts`
 - Modify: `components/pr/PRForm.tsx`
 - Modify: `lib/pr-document-control.ts`
+- Modify: `app/pr/[id]/reissue/actions.ts`
+- Modify: `components/pr/PRDetail.tsx`
+- Modify: `lib/purchase-requests.ts`
 
 **Interfaces:**
 - Consumes `PurchaseRequestCategory` from Task 1.
@@ -434,7 +438,7 @@ expect(() => parseDraftPurchaseRequestForm(formData({
 }))).toThrow(DraftValidationError);
 ```
 
-Add a Reissue source assertion that the create payload contains `categoryId: original.categoryId`.
+Add Reissue tests proving that an active source category is preselected, an uncategorized or inactive source requires an explicit active selection, and the create payload always contains the validated active category id.
 
 - [ ] **Step 2: Run focused tests and verify failure**
 
@@ -481,9 +485,11 @@ Place it in Document Information before the purpose/purchase-method fieldsets:
 </Field>
 ```
 
-- [ ] **Step 6: Preserve category during Reissue**
+- [ ] **Step 6: Preserve and validate category during Reissue**
 
-Add `categoryId: original.categoryId` to the replacement Draft create data. Clone already preserves it through `mapCloneSourceRecordToInitialValue`.
+Extend the Reissue action to accept `FormData` and a submitted `categoryId`. When the source category is active, preselect and reuse it. When the source category is null or inactive, show a required active-category select in the Reissue command before submission. Inside the existing Reissue transaction, query the submitted or fallback category with `isActive: true`; reject missing or inactive values before creating the replacement, and persist `category.id` rather than the nullable source value. Clone continues to preserve its source value through `mapCloneSourceRecordToInitialValue`, while normal Draft submission enforces active-category validation.
+
+Add transaction-level Reissue tests for valid, missing, and inactive category cases. The replacement Draft must never be created with a null or inactive category.
 
 - [ ] **Step 7: Run regression tests and typecheck**
 
@@ -498,7 +504,7 @@ Expected: exit code 0.
 - [ ] **Step 8: Commit the workflow unit**
 
 ```bash
-git add lib/pr-draft.ts components/pr/PRForm.tsx lib/pr-document-control.ts tests/pr-draft.test.ts tests/pr-document-control.test.ts tests/pr-form-workflow-copy.test.ts
+git add lib/pr-draft.ts components/pr/PRForm.tsx lib/pr-document-control.ts app/pr/[id]/reissue/actions.ts components/pr/PRDetail.tsx lib/purchase-requests.ts tests/pr-draft.test.ts tests/pr-document-control.test.ts tests/purchase-request-detail.test.ts tests/pr-form-workflow-copy.test.ts
 git commit -m "Require PR category on drafts"
 ```
 

@@ -46,6 +46,18 @@ describe("PR form workflow copy", () => {
     expect(source).toContain("initialDraft?.categoryId || \"\"");
   });
 
+  test("submits a preselected or explicitly required active category for reissue", () => {
+    const detailSource = readFileSync("components/pr/PRDetail.tsx", "utf8");
+    const actionSource = readFileSync("app/pr/[id]/reissue/actions.ts", "utf8");
+
+    expect(detailSource).toContain('name="categoryId"');
+    expect(detailSource).toContain("defaultValue={reissue.categoryId}");
+    expect(detailSource).toContain("reissue.categories.map");
+    expect(detailSource).toContain("required");
+    expect(actionSource).toContain("formData: FormData");
+    expect(actionSource).toContain('formData.get("categoryId")');
+  });
+
   test("supports item, heading, and detail row modes in the PR item table", () => {
     const source = readFileSync("components/pr/PRForm.tsx", "utf8");
 

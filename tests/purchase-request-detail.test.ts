@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { mapPurchaseRequestDetailRecord } from "../lib/purchase-requests";
 
@@ -20,6 +21,8 @@ describe("purchase request detail mapping", () => {
         generatedAt: new Date("2026-06-20T02:18:00.000Z"),
         printedAt: new Date("2026-06-20T03:05:00.000Z"),
         signedAt: null,
+        categoryId: "cat_hardware",
+        category: { id: "cat_hardware", isActive: true },
         company: { displayName: "Grandlink" },
         branch: { name: "HQ" },
         department: { name: "IT Operation" },
@@ -74,6 +77,7 @@ describe("purchase request detail mapping", () => {
           actor: { displayName: "System" },
         },
       ],
+      [{ id: "cat_hardware", code: "HARDWARE", name: "Hardware & Equipment" }],
     );
 
     expect(detail.header).toMatchObject({
@@ -130,5 +134,54 @@ describe("purchase request detail mapping", () => {
       actor: "System",
       detail: "Rendered PR_STANDARD V1",
     });
+    expect(detail.reissue).toEqual({
+      categories: [{ id: "cat_hardware", label: "HARDWARE - Hardware & Equipment" }],
+      categoryId: "cat_hardware",
+    });
+  });
+
+  test("requires category selection when a reissue source category is inactive", () => {
+    const detail = mapPurchaseRequestDetailRecord(
+      {
+        id: "pr_cancelled",
+        prNo: "ITPR_2606002",
+        refNo: null,
+        categoryId: "cat_inactive",
+        category: { id: "cat_inactive", isActive: false },
+        documentDate: new Date("2026-07-01T00:00:00.000Z"),
+        requiredDate: null,
+        purpose: "ซื้อใหม่",
+        purchaseMethod: "ฝ่ายจัดซื้อจัดหา",
+        subtotal: 100,
+        vatRate: 7,
+        vatAmount: 7,
+        totalAmount: 107,
+        status: "CANCELLED",
+        generatedAt: null,
+        printedAt: null,
+        signedAt: null,
+        company: { displayName: "Grandlink" },
+        branch: { name: "HQ" },
+        department: { name: "IT" },
+        division: null,
+        createdBy: { displayName: "Admin User" },
+        items: [],
+        attachments: [],
+      },
+      [],
+      [{ id: "cat_hardware", code: "HARDWARE", name: "Hardware & Equipment" }],
+    );
+
+    expect(detail.reissue.categoryId).toBe("");
+    expect(detail.reissue.categories).toEqual([{ id: "cat_hardware", label: "HARDWARE - Hardware & Equipment" }]);
+  });
+
+  test("loads the source category and ordered active options for the reissue read model", () => {
+    const source = readFileSync("lib/purchase-requests.ts", "utf8");
+    const detailLoader = source.slice(source.indexOf("export async function getPurchaseRequestDetail"));
+
+    expect(detailLoader).toContain("category: true");
+    expect(detailLoader).toContain('orderBy: [{ sortOrder: "asc" }, { name: "asc" }]');
+    expect(detailLoader).toContain("where: { isActive: true }");
   });
 });

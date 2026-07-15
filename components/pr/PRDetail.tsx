@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, SectionHeader } from "@/components/ui/Card";
+import { Field, inputClass } from "@/components/ui/Field";
 import { TableWrap, tableCellClass, tableHeaderClass } from "@/components/ui/Table";
 import type { PurchaseRequestDetail } from "@/lib/purchase-requests";
 import type { PRStatus } from "@/lib/status";
@@ -29,6 +30,7 @@ import { PRTimeline } from "./PRTimeline";
 
 type Header = PurchaseRequestDetail["header"];
 type Attachment = PurchaseRequestDetail["attachments"][number];
+type Reissue = PurchaseRequestDetail["reissue"];
 
 const attachmentSlots = [
   { label: "Generated PDF", types: ["GENERATED_PDF"] },
@@ -67,7 +69,7 @@ function attachmentDownloadHref(prId: string, attachment: Attachment) {
   return `/pr/${prId}/attachments/${attachment.id}`;
 }
 
-function NextActionCard({ generatedPdf, header }: { generatedPdf?: Attachment; header: Header }) {
+function NextActionCard({ generatedPdf, header, reissue }: { generatedPdf?: Attachment; header: Header; reissue: Reissue }) {
   const pdfDownloadHref = `/pr/${header.id}/pdf?download=1`;
 
   if (header.status === "Draft") {
@@ -139,7 +141,13 @@ function NextActionCard({ generatedPdf, header }: { generatedPdf?: Attachment; h
         icon={<RotateCcw aria-hidden className="h-5 w-5 text-primary" />}
         title="Reissue draft"
       >
-        <form action={reissuePurchaseRequestAction.bind(null, header.id)}>
+        <form action={reissuePurchaseRequestAction.bind(null, header.id)} className="grid w-full gap-2 sm:min-w-72">
+          <Field label="PR Category / หมวดหมู่ PR *">
+            <select className={inputClass()} defaultValue={reissue.categoryId} name="categoryId" required>
+              <option value="">Select category</option>
+              {reissue.categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
+            </select>
+          </Field>
           <Button className="min-h-9 px-3 py-1.5 text-xs w-full sm:w-auto" type="submit" variant="primary">
             <RotateCcw aria-hidden className="h-4 w-4" />Reissue
           </Button>
@@ -226,7 +234,7 @@ export function PRDetail({ detail }: { detail: PurchaseRequestDetail }) {
                 <div>
                   <div className="text-xs font-bold uppercase tracking-[0.02em] text-muted">Next action</div>
                   <div className="mt-2">
-                    <NextActionCard generatedPdf={generatedPdf} header={header} />
+                    <NextActionCard generatedPdf={generatedPdf} header={header} reissue={detail.reissue} />
                   </div>
                 </div>
               </div>

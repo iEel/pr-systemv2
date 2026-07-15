@@ -1,5 +1,31 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  prisma: {
+    $transaction: vi.fn(),
+    branch: { findMany: vi.fn() },
+    department: { findMany: vi.fn() },
+    purchaseRequestCategory: { findMany: vi.fn() },
+  },
+  requirePermission: vi.fn(),
+  reserveDraftBudget: vi.fn(),
+  updateDraftBudgetReservation: vi.fn(),
+}));
+
+vi.mock("../lib/auth/current-user", () => ({
+  requirePermission: mocks.requirePermission,
+}));
+
+vi.mock("../lib/budget-tracking", () => ({
+  buildBudgetReference: (input: unknown) => input,
+  reserveDraftBudget: mocks.reserveDraftBudget,
+  updateDraftBudgetReservation: mocks.updateDraftBudgetReservation,
+}));
+
+vi.mock("../lib/prisma", () => ({
+  prisma: mocks.prisma,
+}));
 import {
   DraftValidationError,
   buildDefaultDraftItems,
@@ -7,11 +33,19 @@ import {
   buildDraftCreateData,
   buildDraftUpdateData,
   calculateDraftTotals,
+  createDraftPurchaseRequest,
+  getDraftFormOptions,
   mapCloneSourceRecordToInitialValue,
   mapDraftEditRecordToInitialValue,
   parseDraftPurchaseRequestForm,
   selectDefaultDepartmentAndDivision,
+  updateDraftPurchaseRequest,
 } from "../lib/pr-draft";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.requirePermission.mockResolvedValue({ id: "user_admin" });
+});
 
 function formData(values: Record<string, string | string[]>) {
   const form = new FormData();
@@ -588,5 +622,94 @@ describe("draft purchase request soft budget tracking", () => {
     expect(source).toContain("reserveDraftBudget");
     expect(source).toContain("updateDraftBudgetReservation");
     expect(source).toContain("budgetStatus");
+  });
+});
+
+describe("draft purchase request category persistence", () => {
+  const input = {
+    branchId: "br_sonic04",
+    categoryId: "cat_hardware",
+    departmentId: "dep_it",
+    divisionId: null,
+    documentDate: "2026-07-15",
+    requiredDate: null,
+    purpose: "ซื้อใหม่",
+    purchaseMethod: "ฝ่ายจัดซื้อจัดหา",
+    remark: null,
+    items: [{
+      accountCode: "",
+      description: "Server",
+      quantity: 1,
+      unitCost: 100,
+      totalAmount: 100,
+    }],
+  };
+
+  test("loads active category options in sort order then name order", async () => {
+    mocks.prisma.branch.findMany.mockResolvedValue([]);
+    mocks.prisma.department.findMany.mockResolvedValue([]);
+    mocks.prisma.purchaseRequestCategory.findMany.mockResolvedValue([
+      { id: "cat_hardware", code: "HARDWARE", name: "Hardware & Equipment" },
+    ]);
+
+    const options = await getDraftFormOptions();
+
+    expect(mocks.prisma.purchaseRequestCategory.findMany).toHaveBeenCalledWith({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      where: { isActive: true },
+    });
+    expect(options.categories).toEqual([{ id: "cat_hardware", label: "HARDWARE - Hardware & Equipment" }]);
+  });
+
+  test("create rejects an inactive category before writing the draft", async () => {
+    const tx = {
+      branch: { findFirst: vi.fn().mockResolvedValue({ companyId: "co_sonic04", documentRefNo: null, id: "br_sonic04" }) },
+      department: { findFirst: vi.fn().mockResolvedValue({ id: "dep_it" }) },
+      division: { findFirst: vi.fn() },
+      purchaseRequest: { create: vi.fn(), findUnique: vi.fn() },
+      purchaseRequestCategory: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    mocks.prisma.$transaction.mockImplementation(async (callback: (txArg: typeof tx) => unknown) => callback(tx));
+
+    await expect(createDraftPurchaseRequest(input)).rejects.toMatchObject({
+      fieldErrors: { categoryId: "หมวดหมู่ PR ไม่พร้อมใช้งาน" },
+    });
+
+    expect(tx.purchaseRequestCategory.findFirst).toHaveBeenCalledWith({
+      select: { id: true },
+      where: { id: "cat_hardware", isActive: true },
+    });
+    expect(tx.purchaseRequest.create).not.toHaveBeenCalled();
+  });
+
+  test("edit rejects an inactive category before writing the draft", async () => {
+    const tx = {
+      branch: { findFirst: vi.fn().mockResolvedValue({ companyId: "co_sonic04", documentRefNo: null, id: "br_sonic04" }) },
+      department: { findFirst: vi.fn().mockResolvedValue({ id: "dep_it" }) },
+      division: { findFirst: vi.fn() },
+      purchaseRequest: {
+        findFirst: vi.fn().mockResolvedValue({
+          branchId: "br_sonic04",
+          companyId: "co_sonic04",
+          departmentId: "dep_it",
+          documentDate: new Date("2026-07-15T00:00:00.000Z"),
+          id: "pr_draft",
+          totalAmount: 107,
+        }),
+        update: vi.fn(),
+      },
+      purchaseRequestCategory: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    mocks.prisma.$transaction.mockImplementation(async (callback: (txArg: typeof tx) => unknown) => callback(tx));
+
+    await expect(updateDraftPurchaseRequest("pr_draft", input)).rejects.toMatchObject({
+      fieldErrors: { categoryId: "หมวดหมู่ PR ไม่พร้อมใช้งาน" },
+    });
+
+    expect(tx.purchaseRequestCategory.findFirst).toHaveBeenCalledWith({
+      select: { id: true },
+      where: { id: "cat_hardware", isActive: true },
+    });
+    expect(tx.purchaseRequest.update).not.toHaveBeenCalled();
   });
 });

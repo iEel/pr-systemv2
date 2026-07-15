@@ -553,12 +553,13 @@ export async function cancelPurchaseRequest(id: string, reason: string) {
   });
 }
 
-export async function reissuePurchaseRequest(id: string) {
+export async function reissuePurchaseRequest(id: string, submittedCategoryId = "") {
   const actor = await requirePermission("PR_CANCEL_REISSUE");
 
   return prisma.$transaction(async (tx) => {
     const original = await tx.purchaseRequest.findUnique({
       include: {
+        category: { select: { id: true, isActive: true } },
         items: { orderBy: { lineNo: "asc" } },
       },
       where: { id },
@@ -569,12 +570,27 @@ export async function reissuePurchaseRequest(id: string) {
     }
 
     assertReissuableStatus(original.status);
+    const categoryId = submittedCategoryId.trim() || (original.category?.isActive ? original.category.id : "");
+
+    if (!categoryId) {
+      throw new Error("PR category is required");
+    }
+
+    const category = await tx.purchaseRequestCategory.findFirst({
+      select: { id: true },
+      where: { id: categoryId, isActive: true },
+    });
+
+    if (!category) {
+      throw new Error("PR category is not available");
+    }
+
     const replacementDocumentDate = new Date();
 
     const replacement = await tx.purchaseRequest.create({
       data: {
         branchId: original.branchId,
-        categoryId: original.categoryId,
+        categoryId: category.id,
         companyId: original.companyId,
         createdById: actor.id,
         departmentId: original.departmentId,
