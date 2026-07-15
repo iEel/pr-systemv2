@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Building2,
+  CalendarClock,
   ClipboardList,
   FileText,
   LayoutDashboard,
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/pr", label: "PR Documents", icon: ClipboardList },
+  { href: "/recurring-pr", label: "Recurring PR", icon: CalendarClock },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/templates", label: "Templates", icon: FileText },
   { href: "/masters/companies", label: "Master Data", icon: Building2 },

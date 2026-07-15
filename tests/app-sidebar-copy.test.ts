@@ -18,4 +18,12 @@ describe("app sidebar copy", () => {
     expect(source).toContain("min-h-0 flex-1");
     expect(source).toContain("overflow-y-auto");
   });
+
+  test("keeps Recurring PR separate from PR Documents in the operational navigation", () => {
+    const source = readFileSync("components/app/AppSidebar.tsx", "utf8");
+
+    expect(source).toContain("CalendarClock");
+    expect(source).toContain('{ href: "/recurring-pr", label: "Recurring PR"');
+    expect(source.indexOf('href: "/pr"')).toBeLessThan(source.indexOf('href: "/recurring-pr"'));
+  });
 });

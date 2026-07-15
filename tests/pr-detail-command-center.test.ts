@@ -29,4 +29,15 @@ describe("PR detail command center", () => {
     expect(source).toContain("Category");
     expect(source).toContain('["Category", header.category]');
   });
+
+  test("offers recurring schedule creation to authorized users and traces recurring origins", () => {
+    const source = readFileSync("components/pr/PRDetail.tsx", "utf8");
+    const page = readFileSync("app/pr/[id]/page.tsx", "utf8");
+
+    expect(source).toContain("Create Recurring Schedule");
+    expect(source).toContain("Recurring");
+    expect(source).toContain("header.recurringOrigin");
+    expect(source).toContain("canManageRecurring");
+    expect(page).toContain('hasPermission(user.role, "PR_RECURRING_MANAGE")');
+  });
 });

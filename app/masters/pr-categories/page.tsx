@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, SectionHeader } from "@/components/ui/Card";
 import { inputClass } from "@/components/ui/Field";
 import { TableWrap, tableCellClass, tableHeaderClass } from "@/components/ui/Table";
-import { buildPrCategoryHref, getPrCategoryPageData, type PrCategoryFilters, type PrCategoryRow } from "@/lib/pr-category-master";
+import { buildPrCategoryHref, getPrCategoryDeactivationImpact, getPrCategoryPageData, type PrCategoryFilters, type PrCategoryRow } from "@/lib/pr-category-master";
 import { createPrCategoryAction, setPrCategoryActiveAction, updatePrCategoryAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -130,14 +130,12 @@ function categoryRow({ filters, row }: { filters: PrCategoryFilters; row: PrCate
             <Save aria-hidden className="h-4 w-4" />Save
           </Button>
           {row.isActive ? (
-            <form action={setPrCategoryActiveAction.bind(null, false)} className="grid gap-2">
-              {redirectInputs(filters)}
-              <input name="categoryId" type="hidden" value={row.id} />
-              <Button className="min-h-9 px-3" type="submit" variant="danger">
+            <div className="grid gap-2">
+              <Link className="inline-flex min-h-9 items-center justify-center gap-2 rounded-md bg-danger px-3 text-sm font-semibold text-white hover:bg-danger/90" href={`${buildPrCategoryHref(filters)}${buildPrCategoryHref(filters).includes("?") ? "&" : "?"}deactivate=${encodeURIComponent(row.id)}`}>
                 <Power aria-hidden className="h-4 w-4" />Deactivate
-              </Button>
+              </Link>
               <p className="text-xs leading-5 text-muted">Deactivate hides this category from new PR requests. Existing PR history stays unchanged.</p>
-            </form>
+            </div>
           ) : (
             <form action={setPrCategoryActiveAction.bind(null, true)} className="grid gap-2">
               {redirectInputs(filters)}
@@ -151,6 +149,30 @@ function categoryRow({ filters, row }: { filters: PrCategoryFilters; row: PrCate
         </div>
       </td>
     </tr>
+  );
+}
+
+function deactivationImpactPanel({ filters, impact }: { filters: PrCategoryFilters; impact: Awaited<ReturnType<typeof getPrCategoryDeactivationImpact>> }) {
+  return (
+    <section className="rounded-lg border border-amber-200 bg-amber-50 p-5" aria-labelledby="category-deactivation-impact">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="text-base font-bold text-ink" id="category-deactivation-impact">Category Deactivation Impact</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">Deactivate <strong className="text-ink">{impact.category.code} - {impact.category.name}</strong> only after reviewing its active recurring schedule references.</p>
+        </div>
+        <Badge tone="warning">{impact.activeSchedules.length} affected active recurring schedule{impact.activeSchedules.length === 1 ? "" : "s"}</Badge>
+      </div>
+      {impact.activeSchedules.length ? <ul className="mt-4 grid gap-2">{impact.activeSchedules.map((schedule) => <li className="flex flex-col gap-1 rounded-md border border-amber-200 bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between" key={schedule.id}><Link className="font-semibold text-primary hover:underline" href={`/recurring-pr/${schedule.id}`}>{schedule.name}</Link><span className="text-xs font-semibold text-muted">{schedule.responsibleUserName} · next {formatUpdatedAt(schedule.nextRunDate)}</span></li>)}</ul> : <p className="mt-4 text-sm font-semibold text-ink">No affected active recurring schedules. Existing PR history will remain unchanged.</p>}
+      <div className="mt-5 flex flex-wrap gap-2">
+        <form action={setPrCategoryActiveAction.bind(null, false)}>
+          {redirectInputs(filters)}
+          <input name="categoryId" type="hidden" value={impact.category.id} />
+          <input name="intendedIsActive" type="hidden" value="0" />
+          <Button type="submit" variant="danger"><Power aria-hidden className="h-4 w-4" />Confirm Deactivate</Button>
+        </form>
+        <Link className="inline-flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-ink hover:bg-white/70" href={buildPrCategoryHref(filters)}>Cancel</Link>
+      </div>
+    </section>
   );
 }
 
@@ -191,7 +213,8 @@ export default async function PrCategoriesPage({
   searchParams?: Promise<SearchParams>;
 }) {
   const params = searchParams ? await searchParams : undefined;
-  const { filters, rows } = await getPrCategoryPageData(params);
+  const deactivate = typeof params?.deactivate === "string" ? params.deactivate : undefined;
+  const [{ filters, rows }, impact] = await Promise.all([getPrCategoryPageData(params), deactivate ? getPrCategoryDeactivationImpact(deactivate) : Promise.resolve(null)]);
 
   return (
     <AppFrame>
@@ -206,6 +229,7 @@ export default async function PrCategoriesPage({
           }
         />
         <MasterDataNav />
+        {impact ? deactivationImpactPanel({ filters, impact }) : null}
         {filterForm({ filters })}
         {createCategoryForm({ filters })}
         {categoryTable({ filters, rows })}

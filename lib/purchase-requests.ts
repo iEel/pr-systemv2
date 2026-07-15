@@ -40,6 +40,7 @@ export type PurchaseRequestDetail = {
     vatAmount: number;
     total: number;
     status: PRStatus;
+    recurringOrigin: { scheduleId: string; scheduleName: string } | null;
   };
   items: Array<{
     lineNo: number;
@@ -102,6 +103,7 @@ type PurchaseRequestDetailRecord = PurchaseRequestRecord & {
   generatedAt: Date | null;
   printedAt: Date | null;
   signedAt: Date | null;
+  recurringRun?: { schedule: { id: string; name: string } } | null;
   items: Array<{
     lineNo: number;
     rowType?: string | null;
@@ -241,6 +243,7 @@ export function mapPurchaseRequestDetailRecord(
       vatAmount: toNumber(record.vatAmount),
       total: toNumber(record.totalAmount),
       status: mapDbStatusToUiStatus(record.status),
+      recurringOrigin: record.recurringRun ? { scheduleId: record.recurringRun.schedule.id, scheduleName: record.recurringRun.schedule.name } : null,
     },
     items: record.items.reduce<PurchaseRequestDetail["items"]>((items, item) => {
       const rowType = normalizeItemRowType(item.rowType);
@@ -315,6 +318,7 @@ export async function getPurchaseRequestDetail(id: string) {
       department: true,
       division: true,
       items: { orderBy: { lineNo: "asc" } },
+      recurringRun: { select: { schedule: { select: { id: true, name: true } } } },
     },
   });
 

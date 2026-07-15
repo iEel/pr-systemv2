@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  CalendarDays,
   CheckCircle2,
   Copy,
   Download,
@@ -196,7 +197,7 @@ function CommandCard({
   );
 }
 
-export function PRDetail({ detail }: { detail: PurchaseRequestDetail }) {
+export function PRDetail({ canManageRecurring = false, detail }: { canManageRecurring?: boolean; detail: PurchaseRequestDetail }) {
   const { header } = detail;
   const status = getStatusConfig(header.status);
   const generatedPdf = findAttachment(detail.attachments, ["GENERATED_PDF"]);
@@ -210,7 +211,7 @@ export function PRDetail({ detail }: { detail: PurchaseRequestDetail }) {
       <SectionHeader
         title={`PR No. ${header.prNo}`}
         description="ตรวจสอบข้อมูลเอกสาร, รายการสินค้า, ไฟล์แนบ และ timeline ก่อนทำขั้นตอนถัดไป"
-        action={<Badge tone={status.tone}>{status.label}</Badge>}
+        action={<div className="flex flex-wrap items-center gap-2">{header.recurringOrigin ? <Link href={`/recurring-pr/${header.recurringOrigin.scheduleId}`}><Badge tone="purple">Recurring</Badge></Link> : null}<Badge tone={status.tone}>{status.label}</Badge></div>}
       />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_23rem]">
         <div className="space-y-5">
@@ -273,6 +274,7 @@ export function PRDetail({ detail }: { detail: PurchaseRequestDetail }) {
                   <Link className={linkButtonClass} href={`/pr/new?cloneFrom=${header.id}`}>
                     <Copy aria-hidden className="h-4 w-4" />Clone as Draft
                   </Link>
+                  {canManageRecurring ? <Link className={linkButtonClass} href={`/recurring-pr/new?sourcePrId=${header.id}`}><CalendarDays aria-hidden className="h-4 w-4" />Create Recurring Schedule</Link> : null}
                   {header.status === "Draft" ? (
                     <Link className={linkButtonClass} href={`/pr/${header.id}/edit`}>
                       <Pencil aria-hidden className="h-4 w-4" />Edit Draft

@@ -221,4 +221,12 @@ describe("purchase request detail mapping", () => {
     expect(detailLoader).toContain('orderBy: [{ sortOrder: "asc" }, { name: "asc" }]');
     expect(detailLoader).toContain("where: { isActive: true }");
   });
+
+  test("loads and maps recurring run origin for PR traceability", () => {
+    const source = readFileSync("lib/purchase-requests.ts", "utf8");
+    const detailLoader = source.slice(source.indexOf("export async function getPurchaseRequestDetail"));
+
+    expect(detailLoader).toContain("recurringRun");
+    expect(source).toContain("recurringOrigin");
+  });
 });

@@ -27,4 +27,14 @@ describe("PR category admin page", () => {
     expect(breadcrumbs).toContain('"pr-categories": "PR Categories"');
     expect(breadcrumbs).toContain('labels[segment] ?? (segment.startsWith("pr-") ? "PR Detail" : segment)');
   });
+
+  test("requires a named deactivation impact confirmation with affected recurring schedule links", () => {
+    const page = readFileSync("app/masters/pr-categories/page.tsx", "utf8");
+
+    expect(page).toContain("Category Deactivation Impact");
+    expect(page).toContain("affected active recurring schedule");
+    expect(page).toContain("/recurring-pr/");
+    expect(page).toContain('name="categoryId"');
+    expect(page).toContain("Cancel");
+  });
 });

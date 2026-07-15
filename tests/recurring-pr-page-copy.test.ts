@@ -1,0 +1,45 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, test } from "vitest";
+
+describe("Recurring PR pages", () => {
+  test("uses a separate operational module instead of a PR Documents tab", () => {
+    const sidebar = readFileSync("components/app/AppSidebar.tsx", "utf8");
+    const list = readFileSync("app/recurring-pr/page.tsx", "utf8");
+    const prList = readFileSync("components/pr/PRList.tsx", "utf8");
+
+    expect(sidebar).toContain('href: "/recurring-pr"');
+    expect(list).toContain("Recurring PR");
+    expect(list).toContain("Needs attention");
+    expect(prList).not.toContain("Recurring Schedules");
+  });
+
+  test("keeps editable schedule forms behind the recurring permission while read pages stay authenticated", () => {
+    const newPage = readFileSync("app/recurring-pr/new/page.tsx", "utf8");
+    const editPage = readFileSync("app/recurring-pr/[id]/edit/page.tsx", "utf8");
+    const listPage = readFileSync("app/recurring-pr/page.tsx", "utf8");
+    const detailPage = readFileSync("app/recurring-pr/[id]/page.tsx", "utf8");
+
+    expect(newPage).toContain('requirePermission("PR_RECURRING_MANAGE")');
+    expect(editPage).toContain('requirePermission("PR_RECURRING_MANAGE")');
+    expect(listPage).toContain("requireCurrentUser");
+    expect(detailPage).toContain("requireCurrentUser");
+  });
+
+  test("builds the five-section schedule form and operational list/detail controls", () => {
+    const form = readFileSync("components/recurring-pr/RecurringScheduleForm.tsx", "utf8");
+    const list = readFileSync("components/recurring-pr/RecurringScheduleList.tsx", "utf8");
+    const detail = readFileSync("app/recurring-pr/[id]/page.tsx", "utf8");
+
+    expect(form).toContain("Schedule name and responsible user");
+    expect(form).toContain("Renewal month/day and lead days");
+    expect(form).toContain("Company / Branch / Department / Division / Category");
+    expect(form).toContain("PRItemEditor");
+    expect(form).toContain("Next renewal and next Draft preview");
+    expect(form).toContain('rowType: "rowType"');
+    expect(list).toContain("Needs attention");
+    expect(list).toContain("No recurring schedules match this view");
+    expect(list).toContain("Actions");
+    expect(detail).toContain("Run history");
+    expect(detail).not.toContain("Retry");
+  });
+});
