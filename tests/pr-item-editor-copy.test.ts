@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
+import { calculatePRItemEditorTotals } from "../lib/pr-item-editor-totals";
 
 test("shares one item editor between PR and recurring schedule forms", () => {
   const editor = readFileSync("components/pr/PRItemEditor.tsx", "utf8");
@@ -15,6 +16,18 @@ test("shares one item editor between PR and recurring schedule forms", () => {
   expect(editor).toContain("export function PRItemEditor");
   expect(editor).toContain("quantity: number;");
   expect(editor).toContain("unitCost: number;");
+  expect(editor).toContain("calculatePRItemEditorTotals");
   expect(prForm).toContain("<PRItemEditor");
   expect(prForm).toContain("onTotalsChange");
+  expect(prForm).toContain("calculatePRItemEditorTotals");
+});
+
+test("uses persisted draft rounding for callback totals", () => {
+  expect(calculatePRItemEditorTotals([
+    { rowType: "ITEM", accountCode: "", description: "Fractional item", quantity: 0.3333, unitCost: 1 },
+  ])).toEqual({
+    subtotal: 0.33,
+    vatAmount: 0.02,
+    totalAmount: 0.35,
+  });
 });

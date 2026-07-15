@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { inputClass } from "@/components/ui/Field";
 import { TableWrap, tableCellClass, tableHeaderClass } from "@/components/ui/Table";
 import type { DraftLineItemRowType } from "@/lib/pr-draft";
+import { calculatePRItemEditorTotals, type PRItemEditorTotals } from "@/lib/pr-item-editor-totals";
 import { formatAmount } from "@/lib/utils";
 
 export type PRItemEditorValue = Array<{
@@ -16,11 +17,7 @@ export type PRItemEditorValue = Array<{
   unitCost: number;
 }>;
 
-export type PRItemEditorTotals = {
-  subtotal: number;
-  vatAmount: number;
-  totalAmount: number;
-};
+export type { PRItemEditorTotals } from "@/lib/pr-item-editor-totals";
 
 export type PRItemEditorFieldNames = {
   accountCode: string;
@@ -85,11 +82,7 @@ function createInitialRows(initialItems: PRItemEditorValue): DraftRow[] {
 
 export function PRItemEditor({ initialItems, onTotalsChange, fieldNames = defaultFieldNames }: PRItemEditorProps) {
   const [rows, setRows] = useState<DraftRow[]>(() => createInitialRows(initialItems));
-  const totals = useMemo(() => {
-    const subtotal = rows.reduce((sum, row) => sum + (row.rowType === "ITEM" ? toNumber(row.quantity) * toNumber(row.unitCost) : 0), 0);
-    const vatAmount = subtotal * 0.07;
-    return { subtotal, vatAmount, totalAmount: subtotal + vatAmount };
-  }, [rows]);
+  const totals = useMemo(() => calculatePRItemEditorTotals(rows), [rows]);
 
   useEffect(() => {
     onTotalsChange?.(totals);

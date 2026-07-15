@@ -32,11 +32,11 @@ export type RecurringScheduleFormValue = Omit<RecurringScheduleInput, "items"> &
 };
 
 export type RecurringScheduleReferenceLookup = {
-  branch?: { isActive: boolean; company?: { isActive: boolean } | null } | null;
-  category?: { isActive: boolean } | null;
-  department?: { id: string; isActive: boolean } | null;
-  division?: { departmentId?: string; isActive: boolean } | null;
-  responsibleUser?: { isActive: boolean } | null;
+  branch: { isActive: boolean; company: { isActive: boolean } | null } | null;
+  category: { isActive: boolean } | null;
+  department: { id: string; isActive: boolean } | null;
+  division: { departmentId: string; isActive: boolean } | null;
+  responsibleUser: { isActive: boolean } | null;
 };
 
 type RecurringScheduleSourceRecord = {
@@ -191,10 +191,10 @@ export function parseRecurringScheduleForm(formData: FormData): RecurringSchedul
 
 export function validateRecurringScheduleReferences(lookup: RecurringScheduleReferenceLookup) {
   const fieldErrors: Record<string, string> = {};
-  if (!lookup.branch?.isActive || lookup.branch.company?.isActive === false) fieldErrors.branchId = "Company / Branch ไม่พร้อมใช้งาน";
+  if (!lookup.branch?.isActive || !lookup.branch.company?.isActive) fieldErrors.branchId = "Company / Branch ไม่พร้อมใช้งาน";
   if (!lookup.department?.isActive) fieldErrors.departmentId = "Department ไม่พร้อมใช้งาน";
   if (!lookup.category?.isActive) fieldErrors.categoryId = "หมวดหมู่ PR ไม่พร้อมใช้งาน";
-  if (lookup.division && (!lookup.division.isActive || (lookup.division.departmentId && lookup.department && lookup.division.departmentId !== lookup.department.id))) {
+  if (lookup.division && (!lookup.division.isActive || !lookup.department?.isActive || lookup.division.departmentId !== lookup.department.id)) {
     fieldErrors.divisionId = "Division ไม่ตรงกับ Department";
   }
   if (!lookup.responsibleUser?.isActive) fieldErrors.responsibleUserId = "ผู้รับผิดชอบไม่พร้อมใช้งาน";

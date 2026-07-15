@@ -3,6 +3,7 @@ import { DraftValidationError } from "../lib/pr-draft";
 import {
   mapSourcePrToScheduleForm,
   parseRecurringScheduleForm,
+  type RecurringScheduleReferenceLookup,
   validateRecurringScheduleReferences,
 } from "../lib/recurring-pr";
 
@@ -34,6 +35,17 @@ function recurringForm(values: Record<string, string | string[]> = {}) {
   }
 
   return form;
+}
+
+function activeReferenceLookup(overrides: Partial<RecurringScheduleReferenceLookup> = {}): RecurringScheduleReferenceLookup {
+  return {
+    branch: { isActive: true, company: { isActive: true } },
+    category: { isActive: true },
+    department: { id: "dep_it", isActive: true },
+    division: null,
+    responsibleUser: { isActive: true },
+    ...overrides,
+  };
 }
 
 describe("recurring schedule form parsing", () => {
@@ -83,8 +95,36 @@ describe("recurring schedule form parsing", () => {
     expect(() => parseRecurringScheduleForm(recurringForm({ rowType: ["HEADING", "DETAIL"], accountCode: ["", ""], description: ["Licenses", "Renew annually"], quantity: ["", ""], unitCost: ["", ""] }))).toThrow(DraftValidationError);
   });
 
-  test("rejects inactive required references", () => {
-    expect(() => validateRecurringScheduleReferences({ category: { isActive: true }, responsibleUser: { isActive: false } })).toThrow(DraftValidationError);
+  test("rejects an inactive responsible user", () => {
+    expect(() => validateRecurringScheduleReferences(activeReferenceLookup({ responsibleUser: { isActive: false } }))).toThrow(DraftValidationError);
+  });
+
+  test("rejects a branch without loaded company proof", () => {
+    const lookup = activeReferenceLookup({
+      branch: { isActive: true } as unknown as RecurringScheduleReferenceLookup["branch"],
+    });
+
+    expect(() => validateRecurringScheduleReferences(lookup)).toThrow(DraftValidationError);
+  });
+
+  test("rejects a missing department", () => {
+    expect(() => validateRecurringScheduleReferences(activeReferenceLookup({ department: null }))).toThrow(DraftValidationError);
+  });
+
+  test("rejects a division without loaded owner proof", () => {
+    const lookup = activeReferenceLookup({
+      division: { isActive: true } as unknown as RecurringScheduleReferenceLookup["division"],
+    });
+
+    expect(() => validateRecurringScheduleReferences(lookup)).toThrow(DraftValidationError);
+  });
+
+  test("rejects a branch whose loaded company is inactive", () => {
+    expect(() => validateRecurringScheduleReferences(activeReferenceLookup({ branch: { isActive: true, company: { isActive: false } } }))).toThrow(DraftValidationError);
+  });
+
+  test("rejects a division owned by another department", () => {
+    expect(() => validateRecurringScheduleReferences(activeReferenceLookup({ division: { isActive: true, departmentId: "dep_other" } }))).toThrow(DraftValidationError);
   });
 });
 

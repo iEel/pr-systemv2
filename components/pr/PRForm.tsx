@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, SectionHeader } from "@/components/ui/Card";
 import { Field, inputClass } from "@/components/ui/Field";
-import { PRItemEditor, type PRItemEditorTotals, type PRItemEditorValue } from "@/components/pr/PRItemEditor";
+import { PRItemEditor, type PRItemEditorValue } from "@/components/pr/PRItemEditor";
 import { buildDefaultDraftRemark } from "@/lib/pr-form-defaults";
-import { calculateDraftTotals, type DraftCloneSource, type DraftFormInitialValue, type DraftFormOptions } from "@/lib/pr-draft";
+import { type DraftCloneSource, type DraftFormInitialValue, type DraftFormOptions } from "@/lib/pr-draft";
+import { calculatePRItemEditorTotals, type PRItemEditorTotals } from "@/lib/pr-item-editor-totals";
 import { formatTHB } from "@/lib/utils";
 
 type PRFormProps = {
@@ -33,12 +34,7 @@ function createInitialItems(options: DraftFormOptions, initialDraft?: DraftFormI
 }
 
 function calculateInitialTotals(items: PRItemEditorValue): PRItemEditorTotals {
-  const totals = calculateDraftTotals(items.map((item) => {
-    const quantity = Number(item.quantity) || 0;
-    const unitCost = Number(item.unitCost) || 0;
-    return { ...item, quantity, unitCost, totalAmount: item.rowType === "ITEM" ? quantity * unitCost : 0 };
-  }));
-  return { subtotal: totals.subtotal, vatAmount: totals.vatAmount, totalAmount: totals.totalAmount };
+  return calculatePRItemEditorTotals(items);
 }
 
 export function PRForm({ action, cloneSource, initialDraft, mode = "new", options }: PRFormProps) {

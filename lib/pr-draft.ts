@@ -127,6 +127,10 @@ function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+export function calculateDraftLineTotal(quantity: number, unitCost: number) {
+  return roundMoney(quantity * unitCost);
+}
+
 function isInputDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime());
 }
@@ -247,7 +251,7 @@ export function parseDraftPurchaseRequestForm(formData: FormData): DraftPurchase
       description,
       quantity,
       unitCost,
-      totalAmount: roundMoney(quantity * unitCost),
+      totalAmount: calculateDraftLineTotal(quantity, unitCost),
     });
   }
 

@@ -32,3 +32,16 @@ Final verification: `npm test`, `npm run typecheck`, and `git diff --check` all 
 
 - Database loading, schedule persistence, next-run calculation, and recurring schedule pages remain in the later scoped tasks.
 - `PRItemEditor` accepts configurable field names for the future recurring form, but Task 3 does not create that form.
+
+## P2 Review Remediation
+
+Addressed both findings in `recurring-task-3-review.md`.
+
+- `RecurringScheduleReferenceLookup` now requires every loaded relationship proof. A branch must carry a company record, and a supplied division must carry its owning `departmentId`; runtime validation rejects missing, inactive, or mismatched proofs.
+- `PRForm` initialization and `PRItemEditor` callback totals now share `calculatePRItemEditorTotals`, which uses the persisted draft line and aggregate rounding helpers. The `0.3333 x 1.00` regression resolves to subtotal `0.33`, VAT `0.02`, and total `0.35` before and after mount.
+
+RED evidence: `npm test -- tests/recurring-pr.test.ts tests/pr-item-editor-copy.test.ts` exited 1. The missing-company and missing-division-owner cases did not throw, and the shared totals helper was absent.
+
+GREEN evidence: `npm test -- tests/recurring-pr.test.ts tests/pr-item-editor-copy.test.ts tests/pr-form-workflow-copy.test.ts tests/pr-draft.test.ts` exited 0 with 4 files and 40 tests passed. Final `npm test`, `npm run typecheck`, and `git diff --check` exited 0; the full suite passed with 59 files and 316 tests.
+
+Follow-up commit: `Fix recurring validation and editor totals rounding`.
