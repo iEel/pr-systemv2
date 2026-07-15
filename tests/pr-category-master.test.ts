@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   prisma: {
     $transaction: vi.fn(),
+    purchaseRequestCategory: undefined as unknown as { findUnique: ReturnType<typeof vi.fn> },
+    recurringPurchaseRequestSchedule: undefined as unknown as { findMany: ReturnType<typeof vi.fn> },
   },
   requirePermission: vi.fn(),
 }));
@@ -17,10 +19,12 @@ vi.mock("../lib/prisma", () => ({
 
 import {
   buildPrCategoryHref,
+  getPrCategoryDeactivationImpact,
   mapPrCategoryRecordToRow,
   normalizePrCategoryFilters,
   parsePrCategoryInput,
   readPrCategoryRedirectFilters,
+  setPrCategoryActiveFromFormData,
   updatePrCategoryFromFormData,
   validateCategoryCodeMutation,
 } from "../lib/pr-category-master";
@@ -119,5 +123,59 @@ describe("PR category master", () => {
       where: { id: category.id },
     });
     expect(mocks.prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "Serializable" });
+  });
+
+  test("lists only active schedules for deactivation impact in stable name order", async () => {
+    mocks.prisma.purchaseRequestCategory = {
+      findUnique: vi.fn().mockResolvedValue({ code: "HARDWARE", id: "cat_hardware", name: "Hardware" }),
+    };
+    mocks.prisma.recurringPurchaseRequestSchedule = {
+      findMany: vi.fn().mockResolvedValue([
+        { id: "schedule_a", name: "Annual devices", nextRunDate: new Date("2026-08-02T00:00:00.000Z"), responsibleUser: { displayName: "Ari" } },
+      ]),
+    };
+
+    await expect(getPrCategoryDeactivationImpact("cat_hardware")).resolves.toEqual({
+      category: { code: "HARDWARE", id: "cat_hardware", name: "Hardware" },
+      activeSchedules: [
+        { id: "schedule_a", name: "Annual devices", nextRunDate: "2026-08-02T00:00:00.000Z", responsibleUserName: "Ari" },
+      ],
+    });
+    expect(mocks.prisma.recurringPurchaseRequestSchedule.findMany).toHaveBeenCalledWith({
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: { id: true, name: true, nextRunDate: true, responsibleUser: { select: { displayName: true } } },
+      where: { categoryId: "cat_hardware", status: "ACTIVE" },
+    });
+  });
+
+  test("re-queries active schedules inside category deactivation and audits their ids", async () => {
+    const category = { code: "HARDWARE", id: "cat_hardware", name: "Hardware" };
+    const tx = {
+      auditLog: { create: vi.fn().mockResolvedValue({ id: "audit_1" }) },
+      purchaseRequestCategory: {
+        findUnique: vi.fn().mockResolvedValue(category),
+        update: vi.fn().mockResolvedValue({ ...category, isActive: false }),
+      },
+      recurringPurchaseRequestSchedule: {
+        findMany: vi.fn().mockResolvedValue([{ id: "schedule_a" }, { id: "schedule_b" }]),
+      },
+    };
+    mocks.prisma.$transaction.mockImplementation(async (callback: (txArg: typeof tx) => unknown) => callback(tx));
+    const formData = new FormData();
+    formData.set("categoryId", category.id);
+
+    await setPrCategoryActiveFromFormData(formData, false);
+
+    expect(tx.recurringPurchaseRequestSchedule.findMany).toHaveBeenCalledWith({
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: { id: true },
+      where: { categoryId: category.id, status: "ACTIVE" },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "PR category deactivated",
+        metadataJson: expect.stringContaining('"affectedScheduleIds":["schedule_a","schedule_b"]'),
+      }),
+    });
   });
 });

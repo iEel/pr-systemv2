@@ -1,11 +1,34 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  prisma: { $transaction: vi.fn() },
+  requirePermission: vi.fn(),
+}));
+
+vi.mock("../lib/auth/current-user", () => ({
+  requirePermission: mocks.requirePermission,
+}));
+
+vi.mock("../lib/prisma", () => ({
+  prisma: mocks.prisma,
+}));
+
 import { DraftValidationError } from "../lib/pr-draft";
 import {
+  createRecurringScheduleFromFormData,
+  deriveRecurringScheduleUiStatus,
   mapSourcePrToScheduleForm,
+  normalizeRecurringScheduleFilters,
   parseRecurringScheduleForm,
+  setRecurringScheduleStatus,
   type RecurringScheduleReferenceLookup,
   validateRecurringScheduleReferences,
 } from "../lib/recurring-pr";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.requirePermission.mockResolvedValue({ id: "user_admin" });
+});
 
 function recurringForm(values: Record<string, string | string[]> = {}) {
   const form = new FormData();
@@ -125,6 +148,80 @@ describe("recurring schedule form parsing", () => {
 
   test("rejects a division owned by another department", () => {
     expect(() => validateRecurringScheduleReferences(activeReferenceLookup({ division: { isActive: true, departmentId: "dep_other" } }))).toThrow(DraftValidationError);
+  });
+});
+
+describe("recurring schedule list helpers", () => {
+  test("normalizes optional filters into stable schedule list values", () => {
+    expect(normalizeRecurringScheduleFilters({ categoryId: "cat_hardware", q: " renewal ", status: "paused" })).toEqual({
+      categoryId: "cat_hardware",
+      q: "renewal",
+      responsibleUserId: "ALL",
+      status: "PAUSED",
+      upcoming: "ALL",
+    });
+  });
+
+  test("marks active schedules that failed or reference inactive records as needing attention", () => {
+    expect(deriveRecurringScheduleUiStatus({ persistedStatus: "ACTIVE", latestRunStatus: "FAILED", referencesActive: true })).toBe(
+      "NEEDS_ATTENTION",
+    );
+    expect(deriveRecurringScheduleUiStatus({ persistedStatus: "ACTIVE", latestRunStatus: null, referencesActive: false })).toBe(
+      "NEEDS_ATTENTION",
+    );
+    expect(deriveRecurringScheduleUiStatus({ persistedStatus: "PAUSED", latestRunStatus: null, referencesActive: true })).toBe("PAUSED");
+  });
+});
+
+describe("recurring schedule mutations", () => {
+  test("creates a schedule snapshot, ordered items, and audit event in one transaction", async () => {
+    const tx = {
+      auditLog: { create: vi.fn().mockResolvedValue({ id: "audit_1" }) },
+      branch: { findFirst: vi.fn().mockResolvedValue({ companyId: "company_hq", id: "br_hq" }) },
+      department: { findFirst: vi.fn().mockResolvedValue({ id: "dep_it" }) },
+      division: { findFirst: vi.fn().mockResolvedValue({ id: "div_it" }) },
+      purchaseRequest: {
+        findUnique: vi.fn().mockResolvedValue({ id: "pr_source", items: [{ id: "item_source" }], vatRate: 7 }),
+      },
+      purchaseRequestCategory: { findFirst: vi.fn().mockResolvedValue({ id: "cat_subscription_renewal" }) },
+      recurringPurchaseRequestSchedule: { create: vi.fn().mockResolvedValue({ id: "schedule_1" }) },
+      user: { findFirst: vi.fn().mockResolvedValue({ id: "user_it" }) },
+    };
+    mocks.prisma.$transaction.mockImplementation(async (callback: (txArg: typeof tx) => unknown) => callback(tx));
+
+    const created = await createRecurringScheduleFromFormData("pr_source", recurringForm());
+
+    expect(created).toEqual({ id: "schedule_1" });
+    expect(mocks.requirePermission).toHaveBeenCalledWith("PR_RECURRING_MANAGE");
+    expect(tx.purchaseRequest.findUnique).toHaveBeenCalledWith({
+      include: { items: { orderBy: { lineNo: "asc" } } },
+      where: { id: "pr_source" },
+    });
+    expect(tx.recurringPurchaseRequestSchedule.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        branchId: "br_hq",
+        companyId: "company_hq",
+        createdById: "user_admin",
+        sourcePurchaseRequestId: "pr_source",
+        status: "ACTIVE",
+        vatRate: 7,
+        items: {
+          create: expect.arrayContaining([
+            expect.objectContaining({ lineNo: 1, rowType: "HEADING" }),
+            expect.objectContaining({ lineNo: 2, rowType: "ITEM", totalAmount: 350000 }),
+          ]),
+        },
+      }),
+      select: { id: true },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "Recurring schedule created", actorId: "user_admin", entityId: "schedule_1" }),
+    });
+  });
+
+  test("rejects unsupported persisted schedule statuses before opening a transaction", async () => {
+    await expect(setRecurringScheduleStatus("schedule_1", "FAILED" as "ACTIVE")).rejects.toThrow("Schedule status must be ACTIVE or PAUSED");
+    expect(mocks.prisma.$transaction).not.toHaveBeenCalled();
   });
 });
 

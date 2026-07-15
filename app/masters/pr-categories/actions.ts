@@ -29,5 +29,6 @@ export async function updatePrCategoryAction(formData: FormData) {
 export async function setPrCategoryActiveAction(isActive: boolean, formData: FormData) {
   await setPrCategoryActiveFromFormData(formData, isActive);
   revalidatePath("/masters/pr-categories");
+  revalidatePath("/recurring-pr");
   redirectBackToPrCategories(formData);
 }

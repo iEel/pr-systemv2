@@ -71,6 +71,7 @@ async function createCategoryAudit(
   tx: Prisma.TransactionClient,
   {
     action,
+    affectedScheduleIds,
     actorId,
     category,
     detail,
@@ -79,6 +80,7 @@ async function createCategoryAudit(
     actorId: string;
     category: Pick<PrCategoryRecord, "code" | "id" | "name">;
     detail: string;
+    affectedScheduleIds?: string[];
   },
 ) {
   await tx.auditLog.create({
@@ -88,7 +90,7 @@ async function createCategoryAudit(
       entityId: category.id,
       entityType: "PurchaseRequestCategory",
       metadataJson: JSON.stringify({
-        affectedScheduleIds: [],
+        affectedScheduleIds: affectedScheduleIds || [],
         code: category.code,
         detail,
         name: category.name,
@@ -206,6 +208,32 @@ export async function getPrCategoryPageData(params: SearchParams | undefined = {
   };
 }
 
+export async function getPrCategoryDeactivationImpact(categoryId: string) {
+  await requirePermission("MASTER_DATA_MANAGE");
+  const id = requiredCategoryId(categoryId);
+  const category = await prisma.purchaseRequestCategory.findUnique({
+    select: { code: true, id: true, name: true },
+    where: { id },
+  });
+  if (!category) throw new Error("Category not found");
+
+  const activeSchedules = await prisma.recurringPurchaseRequestSchedule.findMany({
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+    select: { id: true, name: true, nextRunDate: true, responsibleUser: { select: { displayName: true } } },
+    where: { categoryId: id, status: "ACTIVE" },
+  });
+
+  return {
+    activeSchedules: activeSchedules.map((schedule) => ({
+      id: schedule.id,
+      name: schedule.name,
+      nextRunDate: schedule.nextRunDate.toISOString(),
+      responsibleUserName: schedule.responsibleUser.displayName,
+    })),
+    category,
+  };
+}
+
 export async function createPrCategoryFromFormData(formData: FormData) {
   const actor = await requirePermission("MASTER_DATA_MANAGE");
   const data = parsePrCategoryInput({
@@ -295,22 +323,33 @@ export async function setPrCategoryActiveFromFormData(formData: FormData, isActi
   const actor = await requirePermission("MASTER_DATA_MANAGE");
   const categoryId = requiredCategoryId(formData.get("categoryId"));
 
-  return prisma.$transaction(async (tx) => {
-    const category = await tx.purchaseRequestCategory.findUnique({ where: { id: categoryId } });
+  return prisma.$transaction(
+    async (tx) => {
+      const category = await tx.purchaseRequestCategory.findUnique({ where: { id: categoryId } });
 
-    if (!category) {
-      throw new Error("Category not found");
-    }
+      if (!category) {
+        throw new Error("Category not found");
+      }
 
-    const updated = await tx.purchaseRequestCategory.update({ data: { isActive }, where: { id: categoryId } });
+      const affectedSchedules = isActive
+        ? []
+        : await tx.recurringPurchaseRequestSchedule.findMany({
+            orderBy: [{ name: "asc" }, { id: "asc" }],
+            select: { id: true },
+            where: { categoryId, status: "ACTIVE" },
+          });
+      const updated = await tx.purchaseRequestCategory.update({ data: { isActive }, where: { id: categoryId } });
 
-    await createCategoryAudit(tx, {
-      action: isActive ? "PR category activated" : "PR category deactivated",
-      actorId: actor.id,
-      category: updated,
-      detail: `${isActive ? "Activated" : "Deactivated"} PR category ${updated.code} - ${updated.name}`,
-    });
+      await createCategoryAudit(tx, {
+        action: isActive ? "PR category activated" : "PR category deactivated",
+        actorId: actor.id,
+        affectedScheduleIds: affectedSchedules.map((schedule) => schedule.id),
+        category: updated,
+        detail: `${isActive ? "Activated" : "Deactivated"} PR category ${updated.code} - ${updated.name}`,
+      });
 
-    return updated;
-  });
+      return updated;
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 }
