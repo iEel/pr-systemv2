@@ -158,7 +158,7 @@ test("retries the same FAILED run only after permission and transitions it throu
   expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "Recurring run retried", actorId: "admin_1" }) }));
 });
 
-function installTransactionalState({ failAutomatedAudit = false, initialRun }: { failAutomatedAudit?: boolean; initialRun?: Record<string, any> } = {}) {
+function installTransactionalState({ failAutomatedAudit = false, initialRun, retryClaimBarrier: useRetryClaimBarrier = false }: { failAutomatedAudit?: boolean; initialRun?: Record<string, any>; retryClaimBarrier?: boolean } = {}) {
   let state = {
     audits: [] as any[],
     drafts: [] as any[],
@@ -167,6 +167,11 @@ function installTransactionalState({ failAutomatedAudit = false, initialRun }: {
   };
   const clone = () => structuredClone(state);
   const runForOccurrence = () => state.runs.find((run) => run.scheduleId === "schedule_1" && run.occurrenceYear === 2026) || null;
+  let retryClaimArrivals = 0;
+  let releaseRetryClaimBarrier: () => void = () => undefined;
+  const retryClaimBarrier = new Promise<void>((resolve) => {
+    releaseRetryClaimBarrier = resolve;
+  });
 
   mocks.prisma.recurringPurchaseRequestSchedule = { findUnique: vi.fn().mockResolvedValue(schedule()) };
   mocks.prisma.recurringPurchaseRequestRun = {
@@ -206,6 +211,14 @@ function installTransactionalState({ failAutomatedAudit = false, initialRun }: {
           Object.assign(run, data);
         },
         updateMany: async ({ data, where }: any) => {
+          if (useRetryClaimBarrier) {
+            retryClaimArrivals += 1;
+            if (retryClaimArrivals === 2) releaseRetryClaimBarrier();
+            await retryClaimBarrier;
+            const sharedRun = state.runs.find((candidate) => candidate.id === where.id && candidate.status === where.status && candidate.purchaseRequestId === where.purchaseRequestId);
+            if (!sharedRun) return { count: 0 };
+            Object.assign(sharedRun, data);
+          }
           const run = pending.runs.find((candidate) => candidate.id === where.id && candidate.status === where.status && candidate.purchaseRequestId === where.purchaseRequestId);
           if (!run) return { count: 0 };
           Object.assign(run, data);
@@ -232,8 +245,9 @@ test("rolls back run, Draft, budget reservation, and audit writes when a late wo
   expect(database.state()).toEqual({ audits: [], drafts: [], reserved: 0, runs: [] });
 });
 
-test("allows one retry claim while concurrent cron skips the same FAILED annual run without partial writes", async () => {
+test("allows exactly one concurrent retry to claim FAILED -> PROCESSING and commits one Draft", async () => {
   const database = installTransactionalState({
+    retryClaimBarrier: true,
     initialRun: {
       id: "run_failed",
       occurrenceYear: 2026,
@@ -245,13 +259,16 @@ test("allows one retry claim while concurrent cron skips the same FAILED annual 
     },
   });
 
-  const [cron, retry] = await Promise.all([
-    processRecurringScheduleOccurrence("schedule_1", new Date("2026-08-02T00:00:00.000Z")),
+  const retries = await Promise.allSettled([
+    retryRecurringPurchaseRequestRun("run_failed"),
     retryRecurringPurchaseRequestRun("run_failed"),
   ]);
 
-  expect(cron).toEqual({ outcome: "SKIPPED", runId: "run_failed", scheduleId: "schedule_1" });
-  expect(retry).toMatchObject({ id: "pr_1", runId: "run_failed", scheduleId: "schedule_1" });
+  expect(retries.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+  expect(retries.filter((result) => result.status === "rejected")).toHaveLength(1);
+  expect(retries.find((result) => result.status === "rejected")).toMatchObject({ reason: expect.objectContaining({ message: "Recurring run is not eligible for retry" }) });
+  expect(mocks.prisma.recurringPurchaseRequestRun.findUnique).toHaveBeenCalledTimes(2);
   expect(database.state()).toMatchObject({ drafts: [{ id: "pr_1" }], reserved: 107, runs: [{ id: "run_failed", purchaseRequestId: "pr_1", status: "SUCCEEDED" }] });
-  expect(database.state().audits).toHaveLength(2);
+  expect(database.state().audits.filter((audit) => audit.action === "Automated recurring Draft created")).toHaveLength(1);
+  expect(database.state().audits.filter((audit) => audit.action === "Recurring run retried")).toHaveLength(1);
 });

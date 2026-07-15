@@ -45,3 +45,17 @@
 - Focused: 47 tests passed.
 - Full: 68 files and 386 tests passed.
 - `npm run typecheck`, `npx prisma validate`, `npm run build`, and `git diff --check` passed.
+
+## Retry Claim Race Addendum
+
+- Replaced the cron/retry approximation with a controlled two-retry race at the `FAILED -> PROCESSING` conditional `updateMany` claim boundary.
+- Both callers load the eligible FAILED run before a barrier releases them. Exactly one shared-state predicate claim returns `count: 1`; the loser receives the worker's safe `Recurring run is not eligible for retry` rejection before Draft, budget, or audit writes.
+- The committed test state contains one Draft, one soft-budget reservation, one SUCCEEDED run linked to that Draft, one automated Draft audit, and one retry audit.
+- The Task 8 SQL Server corroboration note remains in `docs/QA_CHECKLIST.md`; no migration was applied.
+
+### Retry Claim Race Verification
+
+- RED: the new two-retry expectation failed when the prior fake allowed two fulfilled retries.
+- Focused: 47 tests passed.
+- Full: 68 files and 386 tests passed.
+- `npm run typecheck`, `npx prisma validate`, `npm run build`, and `git diff --check` passed.
