@@ -53,6 +53,10 @@ export type RecurringScheduleOptions = {
   responsibleUsers: Array<{ disabled: boolean; id: string; label: string }>;
 };
 
+export type RecurringScheduleReadContext = {
+  now?: Date;
+};
+
 export type RecurringScheduleItemInput = DraftLineItem;
 
 export type RecurringScheduleInput = {
@@ -158,6 +162,17 @@ function isoDate(value: Date | string) {
   return new Date(value).toISOString();
 }
 
+function bangkokDateOnlyToUtcDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function upcomingCutoff(now: Date, days: number) {
+  const cutoff = bangkokDateOnlyToUtcDate(toBangkokDateOnly(now));
+  cutoff.setUTCDate(cutoff.getUTCDate() + days);
+  return cutoff;
+}
+
 function recurringScheduleItems(items: RecurringScheduleItemInput[]) {
   return items.map((item, index) => ({
     accountCode: item.accountCode,
@@ -215,12 +230,18 @@ async function createRecurringScheduleAudit(
     scheduleId,
     sourcePurchaseRequestId,
     nextRunDate,
+    renewalDate,
+    responsibleUserId,
+    scheduledDraftDate,
   }: {
     action: "Recurring schedule created" | "Recurring schedule paused" | "Recurring schedule resumed" | "Recurring schedule updated";
     actorId: string;
     scheduleId: string;
     sourcePurchaseRequestId?: string | null;
     nextRunDate?: Date;
+    renewalDate?: Date;
+    responsibleUserId?: string;
+    scheduledDraftDate?: Date;
   },
 ) {
   await tx.auditLog.create({
@@ -231,7 +252,10 @@ async function createRecurringScheduleAudit(
       entityType: "RecurringPurchaseRequestSchedule",
       metadataJson: JSON.stringify({
         nextRunDate: nextRunDate?.toISOString(),
+        renewalDate: renewalDate?.toISOString(),
+        responsibleUserId: responsibleUserId || null,
         scheduleId,
+        scheduledDraftDate: scheduledDraftDate?.toISOString(),
         sourcePurchaseRequestId: sourcePurchaseRequestId || null,
       }),
     },
@@ -249,9 +273,9 @@ function referencesAreActive(record: any) {
   );
 }
 
-function mapRecurringScheduleRecordToRow(record: any): RecurringScheduleRow {
+function mapRecurringScheduleRecordToRow(record: any, latestGeneratedRun?: any): RecurringScheduleRow {
   const latestRun = record.runs?.[0] || null;
-  const generatedDraft = latestRun?.purchaseRequest || null;
+  const generatedDraft = latestGeneratedRun?.purchaseRequest || record.runs?.find((run: any) => run.purchaseRequest)?.purchaseRequest || null;
 
   return {
     category: { id: record.category.id, label: `${record.category.code} - ${record.category.name}` },
@@ -435,10 +459,14 @@ export function mapSourcePrToScheduleForm(record: RecurringScheduleSourceRecord,
   };
 }
 
-export async function getRecurringSchedulePageData(filters: SearchParams | RecurringScheduleFilters = {}, _viewerId?: string) {
+export async function getRecurringSchedulePageData(
+  filters: SearchParams | RecurringScheduleFilters = {},
+  _viewerId?: string,
+  context: RecurringScheduleReadContext = {},
+) {
   const normalized = normalizeRecurringScheduleFilters(filters);
-  const now = new Date();
-  const upcomingLimit = normalized.upcoming === "ALL" ? null : new Date(now.getTime() + Number(normalized.upcoming) * 24 * 60 * 60 * 1000);
+  const now = context.now || new Date();
+  const upcomingLimit = normalized.upcoming === "ALL" ? null : upcomingCutoff(now, Number(normalized.upcoming));
   const where = {
     ...(normalized.categoryId === "ALL" ? {} : { categoryId: normalized.categoryId }),
     ...(normalized.responsibleUserId === "ALL" ? {} : { responsibleUserId: normalized.responsibleUserId }),
@@ -463,13 +491,26 @@ export async function getRecurringSchedulePageData(filters: SearchParams | Recur
       department: true,
       division: true,
       responsibleUser: true,
-      runs: { include: { purchaseRequest: { select: { id: true, prNo: true } } }, orderBy: { startedAt: "desc" }, take: 1 },
+      runs: { orderBy: { startedAt: "desc" }, select: { id: true, startedAt: true, status: true }, take: 1 },
       sourcePurchaseRequest: { select: { id: true, prNo: true } },
     },
     orderBy: [{ nextRunDate: "asc" }, { name: "asc" }, { id: "asc" }],
     where,
   });
-  const rows = records.map(mapRecurringScheduleRecordToRow).filter((row) => normalized.status !== "NEEDS_ATTENTION" || row.status === "NEEDS_ATTENTION");
+  const latestGeneratedRuns = records.length
+    ? await prisma.recurringPurchaseRequestRun.findMany({
+        include: { purchaseRequest: { select: { id: true, prNo: true } } },
+        orderBy: [{ scheduleId: "asc" }, { occurrenceYear: "desc" }, { startedAt: "desc" }],
+        where: { purchaseRequestId: { not: null }, scheduleId: { in: records.map((record) => record.id) }, status: "SUCCEEDED" },
+      })
+    : [];
+  const latestGeneratedRunBySchedule = new Map<string, (typeof latestGeneratedRuns)[number]>();
+  for (const run of latestGeneratedRuns) {
+    if (!latestGeneratedRunBySchedule.has(run.scheduleId)) latestGeneratedRunBySchedule.set(run.scheduleId, run);
+  }
+  const rows = records
+    .map((record) => mapRecurringScheduleRecordToRow(record, latestGeneratedRunBySchedule.get(record.id)))
+    .filter((row) => normalized.status === "ALL" || row.status === normalized.status);
 
   return { filters: normalized, rows };
 }
@@ -532,7 +573,10 @@ export async function getRecurringScheduleDetail(id: string): Promise<RecurringS
 
   if (!record) return null;
 
-  const row = mapRecurringScheduleRecordToRow({ ...record, runs: record.runs.slice(0, 1) });
+  const row = mapRecurringScheduleRecordToRow(
+    { ...record, runs: record.runs.slice(0, 1) },
+    record.runs.find((run) => run.purchaseRequest),
+  );
   return {
     ...row,
     formValue: {
@@ -632,7 +676,10 @@ export async function createRecurringScheduleFromFormData(sourcePrId: string, fo
         action: "Recurring schedule created",
         actorId: actor.id,
         nextRunDate: occurrence.scheduledDraftDate,
+        renewalDate: occurrence.renewalDate,
+        responsibleUserId: input.responsibleUserId,
         scheduleId: created.id,
+        scheduledDraftDate: occurrence.scheduledDraftDate,
         sourcePurchaseRequestId,
       });
 
@@ -706,7 +753,10 @@ export async function updateRecurringScheduleFromFormData(id: string, formData: 
         action: "Recurring schedule updated",
         actorId: actor.id,
         nextRunDate: occurrence.scheduledDraftDate,
+        renewalDate: occurrence.renewalDate,
+        responsibleUserId: input.responsibleUserId,
         scheduleId: updated.id,
+        scheduledDraftDate: occurrence.scheduledDraftDate,
         sourcePurchaseRequestId: current.sourcePurchaseRequestId,
       });
 

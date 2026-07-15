@@ -31,3 +31,19 @@
 - The requested Prisma migration was intentionally not applied.
 - Recurring pages/components and worker/retry behavior remain in their dedicated later tasks.
 - Full-test/build output retains existing environment warnings about TLS ServerName IP use and Next.js workspace-root inference.
+
+## Review Fixes (Follow-up)
+
+- Resolved the four findings from `recurring-task-4-review.md`.
+- Status filtering now maps every record first and applies every non-`ALL` status against the derived UI status; persisted status remains only a safe query optimization.
+- List rows independently load the latest run that generated a Draft, while detail rows derive the link from full run history. A later failed run therefore retains the earlier Draft link.
+- Upcoming 30/60/90-day filtering now derives the UTC-midnight cutoff from the Bangkok calendar date and accepts an injectable read-time context for deterministic boundary tests.
+- Create and update audit metadata now records `responsibleUserId`, `renewalDate`, `scheduledDraftDate`, and `nextRunDate` when available.
+
+### Follow-up Evidence
+
+- RED: `npm test -- tests/recurring-pr-service.test.ts` reproduced incorrect derived active/paused filters, wall-clock cutoff, missing earlier Draft links, and incomplete update audit metadata.
+- GREEN: `npm test -- tests/recurring-pr.test.ts tests/recurring-pr-service.test.ts` passed: 25 tests.
+- Focused: `npm test -- tests/recurring-pr.test.ts tests/recurring-pr-service.test.ts tests/recurring-pr-actions.test.ts tests/pr-category-master.test.ts tests/auth-permissions.test.ts` passed: 38 tests.
+- Full: `npm test` passed: 61 files, 333 tests.
+- `npm run typecheck`, `npx prisma validate`, `npm run build`, and `git diff --check` passed.

@@ -217,6 +217,12 @@ describe("recurring schedule mutations", () => {
     expect(tx.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ action: "Recurring schedule created", actorId: "user_admin", entityId: "schedule_1" }),
     });
+    const metadata = JSON.parse(tx.auditLog.create.mock.calls[0][0].data.metadataJson);
+    expect(metadata).toMatchObject({
+      responsibleUserId: "user_it",
+      renewalDate: expect.any(String),
+      scheduledDraftDate: expect.any(String),
+    });
   });
 
   test("rejects unsupported persisted schedule statuses before opening a transaction", async () => {
