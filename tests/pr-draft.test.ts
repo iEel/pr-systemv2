@@ -31,6 +31,7 @@ describe("draft purchase request form parsing", () => {
     const draft = parseDraftPurchaseRequestForm(
       formData({
         branchId: "br_sonic04",
+        categoryId: "cat_hardware",
         departmentId: "dep_it_operation",
         divisionId: "div_infrastructure",
         documentDate: "2026-06-28",
@@ -45,6 +46,7 @@ describe("draft purchase request form parsing", () => {
       }),
     );
 
+    expect(draft.categoryId).toBe("cat_hardware");
     expect(draft.items).toEqual([
       {
         rowType: "ITEM",
@@ -89,10 +91,35 @@ describe("draft purchase request form parsing", () => {
     ).toThrow(DraftValidationError);
   });
 
+  test("requires a category", () => {
+    let error: unknown;
+
+    try {
+      parseDraftPurchaseRequestForm(
+        formData({
+          branchId: "br_sonic04",
+          departmentId: "dep_it",
+          documentDate: "2026-07-15",
+          purpose: "ซื้อใหม่",
+          purchaseMethod: "ฝ่ายจัดซื้อจัดหา",
+          itemDescription: ["Server"],
+          itemQuantity: ["1"],
+          itemUnitCost: ["100"],
+        }),
+      );
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(DraftValidationError);
+    expect(error).toMatchObject({ fieldErrors: { categoryId: "กรุณาเลือกหมวดหมู่ PR" } });
+  });
+
   test("allows line items without an account code", () => {
     const draft = parseDraftPurchaseRequestForm(
       formData({
         branchId: "br_sonic04",
+        categoryId: "cat_hardware",
         departmentId: "dep_it",
         divisionId: "div_it",
         documentDate: "2026-06-28",
@@ -121,6 +148,7 @@ describe("draft purchase request form parsing", () => {
     const draft = parseDraftPurchaseRequestForm(
       formData({
         branchId: "br_sonic04",
+        categoryId: "cat_hardware",
         departmentId: "dep_it",
         divisionId: "div_it",
         documentDate: "2026-06-28",
@@ -164,6 +192,7 @@ describe("draft purchase request form parsing", () => {
     const draft = parseDraftPurchaseRequestForm(
       formData({
         branchId: "br_sonic04",
+        categoryId: "cat_hardware",
         departmentId: "dep_it",
         divisionId: "div_it",
         documentDate: "2026-06-28",
@@ -208,6 +237,7 @@ describe("draft purchase request form parsing", () => {
       parseDraftPurchaseRequestForm(
         formData({
           branchId: "br_sonic04",
+          categoryId: "cat_hardware",
           departmentId: "dep_it",
           documentDate: "2026-06-28",
           purpose: "ซื้อใหม่",
@@ -256,6 +286,7 @@ describe("draft purchase request create payload", () => {
     const data = buildDraftCreateData(
       {
         branchId: "br_sonic04",
+        categoryId: "cat_hardware",
         departmentId: "dep_it_operation",
         divisionId: "div_infrastructure",
         documentDate: "2026-06-28",
@@ -284,6 +315,7 @@ describe("draft purchase request create payload", () => {
     );
 
     expect(data).toMatchObject({
+      categoryId: "cat_hardware",
       prNo: null,
       refNo: "SN17-DOCSA011",
       companyId: "co_sonic04",
@@ -326,6 +358,7 @@ describe("draft purchase request create payload", () => {
     const data = buildDraftCreateData(
       {
         branchId: "br_sonic04",
+        categoryId: "cat_hardware",
         departmentId: "dep_it_operation",
         divisionId: null,
         documentDate: "2026-06-30",
@@ -360,6 +393,7 @@ describe("draft purchase request create payload", () => {
 describe("draft purchase request edit mapping", () => {
   const draftInput = {
     branchId: "br_sonic04",
+    categoryId: "cat_hardware",
     departmentId: "dep_it_operation",
     divisionId: null,
     documentDate: "2026-06-28",
@@ -382,6 +416,7 @@ describe("draft purchase request edit mapping", () => {
     const initial = mapDraftEditRecordToInitialValue({
       id: "draft_001",
       branchId: "br_sonic04",
+      categoryId: "cat_hardware",
       departmentId: "dep_it_operation",
       divisionId: null,
       documentDate: new Date("2026-06-28T00:00:00.000Z"),
@@ -403,6 +438,7 @@ describe("draft purchase request edit mapping", () => {
     expect(initial).toEqual({
       id: "draft_001",
       branchId: "br_sonic04",
+      categoryId: "cat_hardware",
       departmentId: "dep_it_operation",
       divisionId: null,
       documentDate: "2026-06-28",
@@ -427,6 +463,7 @@ describe("draft purchase request edit mapping", () => {
       {
         id: "pr_source",
         branchId: "br_sonic04",
+        categoryId: "cat_hardware",
         departmentId: "dep_it_operation",
         divisionId: "div_infrastructure",
         documentDate: new Date("2026-01-15T00:00:00.000Z"),
@@ -459,6 +496,7 @@ describe("draft purchase request edit mapping", () => {
     expect(initial).toEqual({
       id: "pr_source",
       branchId: "br_sonic04",
+      categoryId: "cat_hardware",
       departmentId: "dep_it_operation",
       divisionId: "div_infrastructure",
       documentDate: "2026-06-30",
@@ -507,6 +545,7 @@ describe("draft purchase request edit mapping", () => {
     expect(data.purchaseRequest).toMatchObject({
       companyId: "co_sonic04",
       branchId: "br_sonic04",
+      categoryId: "cat_hardware",
       refNo: "SN17-DOCSA011",
       departmentId: "dep_it_operation",
       divisionId: null,

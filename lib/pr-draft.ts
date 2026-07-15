@@ -18,6 +18,7 @@ export type DraftLineItem = {
 
 export type DraftPurchaseRequestInput = {
   branchId: string;
+  categoryId: string;
   departmentId: string;
   divisionId: string | null;
   documentDate: string;
@@ -40,6 +41,7 @@ export type DraftFormOptions = Awaited<ReturnType<typeof getDraftFormOptions>>;
 export type DraftFormInitialValue = {
   id: string;
   branchId: string;
+  categoryId: string;
   departmentId: string;
   divisionId: string | null;
   documentDate: string;
@@ -72,6 +74,7 @@ type DepartmentOption = {
 type DraftEditRecord = {
   id: string;
   branchId: string;
+  categoryId: string | null;
   departmentId: string;
   divisionId: string | null;
   documentDate: Date;
@@ -178,6 +181,7 @@ export function calculateDraftTotals(items: DraftLineItem[]): DraftTotals {
 export function parseDraftPurchaseRequestForm(formData: FormData): DraftPurchaseRequestInput {
   const fieldErrors: Record<string, string> = {};
   const branchId = getText(formData, "branchId");
+  const categoryId = getText(formData, "categoryId");
   const departmentId = getText(formData, "departmentId");
   const divisionId = getText(formData, "divisionId");
   const documentDate = getText(formData, "documentDate");
@@ -187,6 +191,7 @@ export function parseDraftPurchaseRequestForm(formData: FormData): DraftPurchase
   const remark = getText(formData, "remark");
 
   if (!branchId) fieldErrors.branchId = "เลือก Company / Branch";
+  if (!categoryId) fieldErrors.categoryId = "กรุณาเลือกหมวดหมู่ PR";
   if (!departmentId) fieldErrors.departmentId = "เลือก Department";
   if (!documentDate || !isInputDate(documentDate)) fieldErrors.documentDate = "ระบุ Document Date";
   if (requiredDate && !isInputDate(requiredDate)) fieldErrors.requiredDate = "Required Date ไม่ถูกต้อง";
@@ -254,6 +259,7 @@ export function parseDraftPurchaseRequestForm(formData: FormData): DraftPurchase
 
   return {
     branchId,
+    categoryId,
     departmentId,
     divisionId: divisionId || null,
     documentDate,
@@ -279,6 +285,7 @@ export function buildDraftCreateData(
     templateVersionId: undefined,
     companyId: context.companyId,
     branchId: input.branchId,
+    categoryId: input.categoryId,
     departmentId: input.departmentId,
     divisionId: input.divisionId,
     documentDate: toUtcInputDate(input.documentDate),
@@ -310,6 +317,7 @@ export function mapDraftEditRecordToInitialValue(record: DraftEditRecord): Draft
   return {
     id: record.id,
     branchId: record.branchId,
+    categoryId: record.categoryId || "",
     departmentId: record.departmentId,
     divisionId: record.divisionId,
     documentDate: record.documentDate.toISOString().slice(0, 10),
@@ -344,6 +352,7 @@ export function buildDraftUpdateData(input: DraftPurchaseRequestInput, context: 
     purchaseRequest: {
       companyId: context.companyId,
       branchId: input.branchId,
+      categoryId: input.categoryId,
       departmentId: input.departmentId,
       divisionId: input.divisionId,
       documentDate: toUtcInputDate(input.documentDate),
@@ -390,6 +399,15 @@ export async function createDraftPurchaseRequest(input: DraftPurchaseRequestInpu
 
     if (!department) {
       throw new DraftValidationError({ departmentId: "Department ไม่พร้อมใช้งาน" });
+    }
+
+    const category = await tx.purchaseRequestCategory.findFirst({
+      select: { id: true },
+      where: { id: input.categoryId, isActive: true },
+    });
+
+    if (!category) {
+      throw new DraftValidationError({ categoryId: "หมวดหมู่ PR ไม่พร้อมใช้งาน" });
     }
 
     if (input.divisionId) {
@@ -538,6 +556,15 @@ export async function updateDraftPurchaseRequest(id: string, input: DraftPurchas
       throw new DraftValidationError({ departmentId: "Department ไม่พร้อมใช้งาน" });
     }
 
+    const category = await tx.purchaseRequestCategory.findFirst({
+      select: { id: true },
+      where: { id: input.categoryId, isActive: true },
+    });
+
+    if (!category) {
+      throw new DraftValidationError({ categoryId: "หมวดหมู่ PR ไม่พร้อมใช้งาน" });
+    }
+
     if (input.divisionId) {
       const division = await tx.division.findFirst({
         select: { id: true },
@@ -604,11 +631,15 @@ export async function updateDraftPurchaseRequestFromFormData(id: string, formDat
 }
 
 export async function getDraftFormOptions() {
-  const [branches, departments] = await Promise.all([
+  const [branches, categories, departments] = await Promise.all([
     prisma.branch.findMany({
       include: { company: true },
       orderBy: [{ company: { displayName: "asc" } }, { name: "asc" }],
       where: { isActive: true, company: { isActive: true } },
+    }),
+    prisma.purchaseRequestCategory.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      where: { isActive: true },
     }),
     prisma.department.findMany({
       include: { divisions: { orderBy: { name: "asc" }, where: { isActive: true } } },
@@ -634,6 +665,10 @@ export async function getDraftFormOptions() {
       companyId: branch.companyId,
       companyDisplayName: branch.company.displayName,
       companyLegalName: branch.company.legalName,
+    })),
+    categories: categories.map((category) => ({
+      id: category.id,
+      label: `${category.code} - ${category.name}`,
     })),
     departments: departmentOptions,
     ...defaultSelection,

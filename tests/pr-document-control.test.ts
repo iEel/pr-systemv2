@@ -154,4 +154,10 @@ describe("document-control helpers", () => {
     expect(source).toContain("reserveDraftBudget");
     expect(source).toContain("budgetStatus");
   });
+
+  test("reissue preserves the original category in its replacement draft", () => {
+    const source = readFileSync("lib/pr-document-control.ts", "utf8");
+
+    expect(source).toContain("categoryId: original.categoryId");
+  });
 });

@@ -37,6 +37,15 @@ describe("PR form workflow copy", () => {
     expect(source).toContain("Cloned from");
   });
 
+  test("requires an active PR category selection in document information", () => {
+    const source = readFileSync("components/pr/PRForm.tsx", "utf8");
+
+    expect(source).toContain("PR Category / หมวดหมู่ PR *");
+    expect(source).toContain('name="categoryId"');
+    expect(source).toContain("options.categories.map");
+    expect(source).toContain("initialDraft?.categoryId || \"\"");
+  });
+
   test("supports item, heading, and detail row modes in the PR item table", () => {
     const source = readFileSync("components/pr/PRForm.tsx", "utf8");
 

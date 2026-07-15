@@ -175,6 +175,12 @@ export function PRForm({ action, cloneSource, initialDraft, mode = "new", option
               <Field label="Required Date">
                 <input className={inputClass()} defaultValue={initialDraft?.requiredDate || ""} name="requiredDate" type="date" />
               </Field>
+              <Field label="PR Category / หมวดหมู่ PR *">
+                <select className={inputClass()} defaultValue={initialDraft?.categoryId || ""} name="categoryId" required>
+                  <option value="">Select category</option>
+                  {options.categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
+                </select>
+              </Field>
               <Field label="Department *">
                 <select className={inputClass()} name="departmentId" onChange={(event) => handleDepartmentChange(event.target.value)} required value={selectedDepartmentId}>
                   {options.departments.map((department) => (

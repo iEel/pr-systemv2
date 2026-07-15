@@ -574,6 +574,7 @@ export async function reissuePurchaseRequest(id: string) {
     const replacement = await tx.purchaseRequest.create({
       data: {
         branchId: original.branchId,
+        categoryId: original.categoryId,
         companyId: original.companyId,
         createdById: actor.id,
         departmentId: original.departmentId,
