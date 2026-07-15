@@ -1,6 +1,6 @@
 # Features
 
-Last updated: 2026-07-03
+Last updated: 2026-07-15
 
 ## Implemented Features
 
@@ -42,6 +42,7 @@ Last updated: 2026-07-03
 ### PR Create And Edit
 
 - DB-backed company/branch and department/division options.
+- New Drafts and Draft edits require one active PR category on the server. Legacy controlled PRs may retain a null category and remain readable as `Not categorized`.
 - Default IT department/division behavior in the PR form.
 - Acct field is optional and can be blank.
 - Server-side validation and total calculation.
@@ -56,6 +57,16 @@ Last updated: 2026-07-03
 - New PR Remark starts blank instead of prefilled sample text.
 - PR item entry table gives Description the primary width, keeps Acct/Qty/Unit Cost readable for typical values like `1000` or `100000.00`, and keeps Total Amount compact enough to avoid unnecessary desktop horizontal scroll.
 - PR item table columns `Unit Cost` and `Total Amount` display plain numeric amounts without a currency prefix.
+
+### PR Category Master
+
+- PR Category Master is available at `/masters/pr-categories` to users with `MASTER_DATA_MANAGE`.
+- Admins can create, edit, deactivate, and reactivate category rows. Category code becomes immutable once referenced by a PR.
+- Categories are deactivated rather than deleted so existing PR history, detail views, reports, XLSX exports, and document renders remain intact.
+- The active Draft selection is ordered by category sort order and name. Inactive categories cannot be used to create or update a Draft.
+- Clone as Draft preserves an active source category and still requires an active category before saving.
+- Reissue automatically reuses an active source category. A missing or inactive source category requires an explicit active-category selection before the replacement Draft is created.
+- PR list, Board, Detail, Reports, XLSX export, and Carbone payloads expose the category when present; legacy null relations display `Not categorized`.
 
 ### Draft Preview And Issue PR
 
@@ -79,6 +90,7 @@ Last updated: 2026-07-03
 - Signed and quotation/supporting attachments can be downloaded through a permission-guarded PR attachment route.
 - Cancel is available for generated/printed/signed records.
 - Reissue creates a replacement draft linked to the cancelled original.
+- Reissue preserves the active source category or requires an active replacement selection when the source category is missing or inactive.
 
 ### Word / Excel Template Management
 
@@ -102,6 +114,7 @@ Last updated: 2026-07-03
 - Monetary fields support comma separators and exactly two decimals through `...Formatted` payload fields.
 - Remark text is split into `remarkLine1` and `remarkLine2` for the two ruled rows in the current Word template.
 - Purpose and purchase method checkboxes use precomputed `X` mark fields.
+- Optional `d.categoryCode` and `d.categoryName` fields are available to templates without changing existing templates.
 
 ### Company / Branch Master
 
@@ -169,6 +182,7 @@ Last updated: 2026-07-03
 
 - Reports page is backed by SQL Server PR and Budget records.
 - Filters support year, month, company, and PR status.
+- Filters also support category; category summary and PR detail rows include category labels.
 - Reports are framed as a filter-driven export workspace rather than a duplicate Dashboard.
 - Reports show active filter chips, reset filters, compact budget health, monthly summary, company/branch summary, status summary, and PR detail rows.
 - Monthly Summary uses a compact table and Status Summary uses a distribution panel so desktop users can scan both summaries without the wide detail-table horizontal scroll.
@@ -178,6 +192,7 @@ Last updated: 2026-07-03
 - `/reports/export` downloads the same filtered report as an `.xlsx` workbook.
 - XLSX workbook contains Summary, By Month, By Company, By Status, and PR Detail sheets.
 - XLSX Summary includes a `Budget Warning` row when Remaining Budget is not reliable because Budget Master is missing for the view.
+- XLSX PR Detail includes Category Code and Category Name columns; uncategorized legacy rows remain exportable.
 - Soft Budget tracking updates Budget Master through the PR lifecycle without blocking users: draft totals reserve budget, Issue PR moves reserved to used, Cancel reverses used, and Reissue reserves the replacement draft when a matching active budget exists.
 - Missing or insufficient budget is captured as audit warning metadata instead of stopping PR creation or issuance.
 

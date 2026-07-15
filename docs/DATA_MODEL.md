@@ -117,6 +117,26 @@ Current rules:
 - Budget Master deactivates/reactivates rows through `isActive`; it does not hard-delete budget history.
 - Dashboard and Reports read active budget rows for aggregate totals.
 
+### PurchaseRequestCategory
+
+Normalized master data for one primary PR category.
+
+Suggested fields:
+- `id`
+- `code`
+- `name`
+- `description`
+- `sortOrder`
+- `isActive`
+- `createdAt`
+- `updatedAt`
+
+Current rules:
+- The category master is administered through `/masters/pr-categories` with `MASTER_DATA_MANAGE`; create, update, activate, and deactivate actions write `AuditLog` records.
+- Codes are unique and cannot change after a category is referenced. Name, description, sort order, and active state remain editable.
+- Referenced categories are never hard-deleted. Deactivation removes a category from new-Draft choices but preserves the relation and historical display for existing PRs.
+- The checked-in migration and development seed create the approved active categories in sort order: `HARDWARE`, `SOFTWARE_LICENSE`, `SUBSCRIPTION_RENEWAL`, `SERVICE_MAINTENANCE`, `NETWORK_INFRASTRUCTURE`, `CLOUD_HOSTING`, and `OTHER`.
+
 ### PurchaseRequest
 
 Main document record.
@@ -129,6 +149,7 @@ Suggested fields:
 - `branchId`
 - `departmentId`
 - `divisionId`
+- `categoryId`
 - `documentDate`
 - `requiredDate`
 - `purpose`
@@ -157,6 +178,9 @@ Current rules:
 - Clone as Draft is not a controlled-document correction. It copies business fields and line items into `/pr/new?cloneFrom=<id>`, but the new record is not created until Save Draft or Save & Preview.
 - Cloned drafts do not copy `prNo`, generated/signed attachments, generated snapshots, status, or prior audit history.
 - Saved cloned drafts start as `DRAFT` with `prNo = null` and write `Draft cloned` audit metadata.
+- `categoryId` is nullable at the database level for legacy compatibility. A legacy controlled PR with no category remains readable and renderable as `Not categorized`.
+- New Draft create and Draft edit require a selected active category on the server. The relation is intentionally not made SQL-required until legacy data is retired.
+- Clone carries its source category into the form. Reissue reuses an active source category automatically; if the source relation is missing or inactive, an active category must be selected before a replacement Draft is created.
 
 ### PurchaseRequestItem
 
@@ -323,3 +347,4 @@ The frontend can display and preview calculations, but backend must be authorita
 - Rendered official PDFs are represented by `PurchaseRequestAttachment` with type `GENERATED_PDF`.
 - Quotation/supporting uploads are represented by `PurchaseRequestAttachment` with type `QUOTATION`.
 - Draft preview PDFs are transient and do not create attachment rows.
+- Render payloads expose optional `categoryCode` and `categoryName` values. Existing DOCX/XLSX templates remain valid when they do not reference these fields.

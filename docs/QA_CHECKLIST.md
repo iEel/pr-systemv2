@@ -85,6 +85,7 @@ Desktop:
 - `/pr/<draftOrIssuedId>/upload-quotation`
 - `/templates`
 - `/masters/companies`
+- `/masters/pr-categories`
 - `/masters/budgets`
 - `/settings/users`
 - `/settings/running-numbers`
@@ -123,6 +124,9 @@ Mobile:
 - Clone as Draft resets Document Date to the current default date and leaves Required Date blank.
 - Clone as Draft copies business fields and item rows but does not copy PR No., generated PDF, signed uploads, controlled status, or previous audit history.
 - Saving a cloned PR creates a new `DRAFT` row with `prNo = null`, `clonedFromId = <sourceId>`, and `Draft cloned` audit metadata.
+- New Draft cannot save without a category, and the server rejects inactive or unavailable category selections.
+- Draft edit also requires an active category; legacy controlled PRs with null categories remain readable and previewable as `Not categorized`.
+- Clone as Draft preserves an active source category.
 - Create PR form loads companies, branches, departments, and divisions from SQL Server.
 - Department and division default to IT where available.
 - Acct can be blank.
@@ -160,6 +164,9 @@ Mobile:
 - Monthly Summary numeric headers (`PR`, `Total`, `Used`, `Pending`) align with their numeric cells.
 - Company / Branch Summary numeric headers (`PR Count`, `Total Amount`, `Used`) align with their numeric cells, and dates stay in the intended date column.
 - PR Detail status values use semantic badges instead of plain text.
+- Category labels appear in list, Board, and PR Detail; legacy null category labels read `Not categorized`.
+- Category filter, category summary, and PR Detail category values use the same result set.
+- XLSX export preserves the category filter and includes Category Code and Category Name in PR Detail.
 
 ## Draft Preview Checks
 
@@ -200,6 +207,7 @@ Mobile:
 - Heading rows in the item loop render as description-only grouping rows; following priced items keep continuous visible numbering.
 - Detail rows in the item loop render as description-only continuation rows under the prior item; following priced items keep continuous visible numbering.
 - Long remark text does not push the PR into an unintended second page.
+- Optional `d.categoryCode` and `d.categoryName` render when a template references them; legacy null-category previews still render successfully.
 - `npm run pdf:qa -- --input <pdf> --expected-pages 1` writes a `PASS` report for the representative PR PDF.
 - `output/pdf-qa/<pdf-name>/page-1.png` is manually reviewed before UAT.
 - `output/pdf-qa/<pdf-name>/report.md` checklist has no unresolved visual issues.
@@ -215,6 +223,7 @@ Mobile:
 - Cancel requires a reason for generated/printed/signed records.
 - Reissue is available only for cancelled records.
 - Reissue creates a replacement draft linked through `reissuedFromId`.
+- Reissue auto-reuses an active source category. For a missing or inactive source category, the user must select an active category before the replacement Draft is created.
 - Original generated/signed attachments remain available after cancel/reissue.
 
 ## Quotation / Supporting Attachment Checks
@@ -290,6 +299,14 @@ Mobile:
 - Header/footer upload modal supports doing both assets without forcing a full page workflow reset.
 - Remove deletes unreferenced branches or deactivates referenced branches.
 - Deactivated branches do not appear as active choices for new PR drafts.
+
+## PR Category Master Checks
+
+- `/masters/pr-categories` requires `MASTER_DATA_MANAGE`; `IT_USER` cannot open the route.
+- Admin can create, edit, deactivate, and reactivate a category.
+- Category code cannot change after the category is referenced by a PR.
+- Deactivate never deletes referenced category history and removes the category from new-Draft choices.
+- Active categories appear in sort-order/name order for Draft create, Draft edit, and Reissue selection.
 
 ## Budget Master Checks
 

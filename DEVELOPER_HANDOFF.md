@@ -1,6 +1,6 @@
 # Developer Handoff
 
-Last updated: 2026-07-03
+Last updated: 2026-07-15
 
 ## Project Summary
 
@@ -23,6 +23,9 @@ Completed:
 - Local seeded admin remains an explicit fallback account with `authProvider = LOCAL` and password `admin123`.
 - Auth hardening proxy protects app routes before server components load: anonymous users redirect to `/login?callbackUrl=...`, and authenticated users without route-level admin permissions redirect to `/forbidden`.
 - DB-backed PR list, dashboard recent PR embed, PR detail, draft create, and draft edit.
+- PR Category Master is complete: seven active categories are seeded through migration and development seed, `/masters/pr-categories` provides `MASTER_DATA_MANAGE` CRUD with audit history, and referenced categories are deactivated instead of deleted.
+- Every new or edited Draft requires an active category on the server. The SQL relation remains nullable so legacy controlled PRs without a category stay readable, renderable, and display `Not categorized`.
+- Clone preserves its source category. Reissue automatically reuses an active source category; for a missing or inactive source category, the user must choose an active category before the replacement Draft is created.
 - PR Documents now supports `Table | Board` views on the same filtered page. Table keeps the dense list workflow; Board groups active Draft/Generated/Printed workflow rows separately from Completed/Archived Signed/Cancelled/Reissued rows, with read-only quick actions and no drag-and-drop status mutation.
 - PR Documents row actions now use real links: detail, draft/generated PDF download, and a More menu with lifecycle shortcuts including Upload Quotation.
 - PR Detail is now a command center with clear `Next action`, `Review & files`, and `Danger zone` groups instead of inactive lifecycle buttons.
@@ -317,6 +320,7 @@ Previous verified result on 2026-06-30 after Auth Hardening proxy:
 | `/templates/[id]/preview` | Inline/download rendered template preview PDF | `app/templates/[id]/preview/route.ts` |
 | `/masters/companies` | Company/branch document profile, header/footer assets | `app/masters/companies/page.tsx` |
 | `/masters/companies/assets/[branchId]/[assetType]` | Header/footer image preview | `app/masters/companies/assets/[branchId]/[assetType]/route.ts` |
+| `/masters/pr-categories` | PR Category Master CRUD, active-state management, and audit history | `app/masters/pr-categories/page.tsx`, `lib/pr-category-master.ts` |
 | `/masters/budgets` | SQL Server Budget Master CRUD for yearly IT budget rows | `app/masters/budgets/page.tsx`, `lib/budget-master.ts` |
 | `/reports` | SQL Server PR reports with filters, no-budget warning state, and XLSX export link | `app/reports/page.tsx`, `lib/reporting.ts` |
 | `/reports/export` | Filter-preserving PR report XLSX download, including a Summary warning row when Budget Master is missing for the view | `app/reports/export/route.ts`, `lib/xlsx.ts`, `lib/reporting.ts` |
@@ -341,6 +345,7 @@ Previous verified result on 2026-06-30 after Auth Hardening proxy:
 | `lib/pr-list-actions.ts` | Client-safe PR list action URL builder for detail, clone-as-draft, download, preview, edit, upload quotation, upload signed, cancel, and reissue-from-detail shortcuts. |
 | `lib/pr-submit-intent.ts` | Reads draft form submit intent and maps save vs preview redirects. |
 | `lib/pr-draft.ts` | Draft create/update/clone-source parsing, validation, totals, and transactions. |
+| `lib/pr-category-master.ts` | PR category parsing, permission-guarded CRUD, active-state changes, and audit events. |
 | `lib/pr-generate.ts` | Running number allocation, Carbone payload, draft preview, Issue PR, DOCX image patching, and PDF output. |
 | `lib/pr-document-control.ts` | Permission-guarded PDF/attachment delivery, mark printed, quotation upload, signed upload, cancel, and reissue commands. |
 | `lib/pdf-visual-qa.ts` | PDF QA report helpers for signature, size, page count, rendered page evidence, and Markdown checklist. |
@@ -460,11 +465,12 @@ Important current tags:
 
 ## Recommended Next Work
 
-1. Add browser-level low-role smoke coverage by seeding a disposable `IT_USER`/`VIEWER` test account or adding a dedicated test fixture.
-2. Add user-facing PR warning banners for `MISSING` / `OVER_BUDGET` audit states if IT wants budget warnings visible before audit review.
-3. Run a real UAT backup/restore drill using `docs/BACKUP_RESTORE.md`.
-4. Add automated pixel/baseline comparison on top of the PDF QA rendered PNGs.
-5. Add centralized monitoring/log aggregation and production TLS/internal CA sign-off.
+1. Implement the Annual Recurring PR plan. It depends on the completed Category phase: each scheduled Draft must use an active primary category, while legacy nullable PR categories remain readable.
+2. Add browser-level low-role smoke coverage by seeding a disposable `IT_USER`/`VIEWER` test account or adding a dedicated test fixture.
+3. Add user-facing PR warning banners for `MISSING` / `OVER_BUDGET` audit states if IT wants budget warnings visible before audit review.
+4. Run a real UAT backup/restore drill using `docs/BACKUP_RESTORE.md`.
+5. Add automated pixel/baseline comparison on top of the PDF QA rendered PNGs.
+6. Add centralized monitoring/log aggregation and production TLS/internal CA sign-off.
 
 ## Documentation Index
 

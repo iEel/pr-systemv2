@@ -9,7 +9,7 @@ Start here:
 - [ARCHITECTURE.md](ARCHITECTURE.md) - current Next.js, SQL Server, storage, auth, and Carbone architecture.
 - [FEATURES.md](FEATURES.md) - current implemented feature inventory.
 - [DOCUMENT_GENERATION.md](DOCUMENT_GENERATION.md) - Word template, Carbone payload, PDF preview, Issue PR, and formatting contract.
-- [DATA_MODEL.md](DATA_MODEL.md) - current domain model and PR lifecycle.
+- [DATA_MODEL.md](DATA_MODEL.md) - current domain model, PR Category Master, legacy-compatible category relation, and PR lifecycle.
 - [DATABASE.md](DATABASE.md) - selected SQL Server database name and environment configuration.
 - [BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md) - implemented and remaining backend, Carbone, and file integration notes.
 - [COMPANY_BRANCH_MASTER.md](COMPANY_BRANCH_MASTER.md) - company/branch document profiles and header/footer asset handling.
@@ -30,3 +30,4 @@ Related source-of-truth docs:
 - [../DESIGN.md](../DESIGN.md) - seed visual direction from the design exploration.
 - [superpowers/specs/2026-06-28-mvp-phase-1-app-shell-design.md](superpowers/specs/2026-06-28-mvp-phase-1-app-shell-design.md) - original Phase 1 design spec.
 - [superpowers/plans/2026-06-28-mvp-phase-1-app-shell.md](superpowers/plans/2026-06-28-mvp-phase-1-app-shell.md) - original Phase 1 implementation plan.
+- [superpowers/plans/2026-07-15-pr-category-master-integration.md](superpowers/plans/2026-07-15-pr-category-master-integration.md) - completed Category phase and the dependency for Annual Recurring PR work.

@@ -249,7 +249,8 @@ Exact routing can use API routes or server actions. The important part is the co
 ### Create Draft
 
 - Validate required fields.
-- Validate active company, branch, department, and budget references.
+- Validate active company, branch, department, category, and budget references.
+- Require one active category for Draft create and Draft edit. The nullable SQL relation remains available only for readable legacy controlled PRs.
 - Calculate totals server-side.
 - Create audit event: `Draft created`.
 
@@ -261,6 +262,7 @@ Exact routing can use API routes or server actions. The important part is the co
 - Document Date is reset to the current default date and Required Date is cleared.
 - Clone does not copy controlled document data: `prNo`, generated PDF, signed uploads, generated snapshot, status, and prior audit history stay on the source PR.
 - On save, the new row starts as `DRAFT`, has `prNo = null`, stores `clonedFromId`, reserves budget through the same soft budget helper as a normal draft, and writes `Draft cloned` metadata.
+- The cloned form preserves the source category, but saving still validates that the selected category is active.
 
 ### Preview Draft PDF
 
@@ -316,6 +318,7 @@ Exact routing can use API routes or server actions. The important part is the co
 - Reissue is allowed from `Cancelled`.
 - Reissue creates a linked replacement draft instead of mutating generated or signed files.
 - After reissue, the original PR is marked `Reissued` to prevent repeated replacement drafts.
+- Reissue automatically uses the source category only when it is active. If the source category is missing or inactive, the command rejects the replacement Draft until the user selects an active category; it never creates an uncategorized new Draft.
 
 ### Template Management
 
@@ -344,7 +347,7 @@ Exact routing can use API routes or server actions. The important part is the co
 ### Reports / XLSX Export
 
 - Requires an authenticated user.
-- Uses query parameters: `year`, `month`, `companyId`, and `status`.
+- Uses query parameters: `year`, `month`, `companyId`, `categoryId`, and `status`.
 - Default year is the current year; invalid month/status filters fall back to `All`.
 - Dashboard and Reports share the same aggregate rules:
   - `Used` = `GENERATED`, `PRINTED`, `SIGNED`.
@@ -354,6 +357,7 @@ Exact routing can use API routes or server actions. The important part is the co
 - XLSX export returns `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
 - Workbook sheets are `Summary`, `By Month`, `By Company`, `By Status`, and `PR Detail`.
 - The Summary sheet includes `Budget Warning` when the active Budget Master context is missing.
+- Reports expose category filtering, a category summary, and category labels in PR detail. XLSX PR Detail exports `Category Code` and `Category Name`; legacy null relations remain exportable as `Not categorized`.
 
 ### PDF Visual QA
 
@@ -424,6 +428,9 @@ Exact routing can use API routes or server actions. The important part is the co
 - Header/footer image placeholders should use image alt text containing:
   - `{d.companyHeaderImage}`
   - `{d.companyFooterImage}`
+- Optional category fields are available without changing existing templates:
+  - `d.categoryCode`
+  - `d.categoryName`
 
 ## Carbone Integration
 

@@ -1,6 +1,6 @@
 # Document Generation
 
-Last updated: 2026-07-02
+Last updated: 2026-07-15
 
 This document is the current source of truth for PR Word templates, Carbone payload fields, PDF preview, and official Issue PR behavior.
 
@@ -245,6 +245,13 @@ Template activation currently requires these base tags:
 - `d.items[i].totalAmount`
 
 Known optional tags include branch document profile fields, image fields, formatted amounts, remark split lines, checkbox marks, and item line/account fields.
+
+Category fields are also optional:
+
+- `d.categoryCode`
+- `d.categoryName`
+
+They are populated when the PR has a category. Legacy controlled PRs can have a null category and render with empty optional category values, so existing DOCX/XLSX templates do not need to change.
 
 ## Current Improvement Backlog
 
