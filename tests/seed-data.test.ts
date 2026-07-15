@@ -9,4 +9,12 @@ describe("seed data", () => {
 
     expect(tooLong).toEqual([]);
   });
+
+  test("seeds the approved PR category codes", () => {
+    const source = readFileSync("prisma/seed.mjs", "utf8");
+
+    for (const code of ["HARDWARE", "SOFTWARE_LICENSE", "SUBSCRIPTION_RENEWAL", "SERVICE_MAINTENANCE", "NETWORK_INFRASTRUCTURE", "CLOUD_HOSTING", "OTHER"]) {
+      expect(source).toContain(code);
+    }
+  });
 });

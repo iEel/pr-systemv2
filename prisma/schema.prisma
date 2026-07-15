@@ -123,6 +123,7 @@ model PurchaseRequest {
   branchId              String @db.NVarChar(30)
   departmentId          String @db.NVarChar(30)
   divisionId            String? @db.NVarChar(30)
+  categoryId            String? @db.NVarChar(30)
   documentDate          DateTime
   requiredDate          DateTime?
   purpose               String    @db.NVarChar(120)
@@ -149,6 +150,7 @@ model PurchaseRequest {
   branch              Branch                      @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department          Department                  @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   division            Division?                   @relation(fields: [divisionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category PurchaseRequestCategory? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   templateVersion     DocumentTemplate?           @relation(fields: [templateVersionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   createdBy           User                        @relation("PurchaseRequestCreator", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
   reissuedFrom        PurchaseRequest?            @relation("PurchaseRequestReissue", fields: [reissuedFromId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -157,6 +159,21 @@ model PurchaseRequest {
   clonedChildren      PurchaseRequest[]           @relation("PurchaseRequestClone")
   items               PurchaseRequestItem[]
   attachments         PurchaseRequestAttachment[]
+}
+
+model PurchaseRequestCategory {
+  id          String   @id @default(cuid()) @db.NVarChar(30)
+  code        String   @unique @db.NVarChar(60)
+  name        String   @db.NVarChar(160)
+  description String?  @db.NVarChar(500)
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  purchaseRequests PurchaseRequest[]
+
+  @@index([isActive, sortOrder, name])
 }
 
 model PurchaseRequestItem {

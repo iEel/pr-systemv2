@@ -231,13 +231,23 @@ const divisions = [
   { id: "div_endpoint", departmentId: "dep_it_operation", name: "Endpoint" },
 ];
 
+const prCategories = [
+  { id: "cat_hardware", code: "HARDWARE", name: "Hardware & Equipment", description: null, sortOrder: 10, isActive: true },
+  { id: "cat_software_license", code: "SOFTWARE_LICENSE", name: "Software & Licenses", description: null, sortOrder: 20, isActive: true },
+  { id: "cat_subscription_renewal", code: "SUBSCRIPTION_RENEWAL", name: "Subscription & Renewal", description: null, sortOrder: 30, isActive: true },
+  { id: "cat_service_maintenance", code: "SERVICE_MAINTENANCE", name: "Service & Maintenance", description: null, sortOrder: 40, isActive: true },
+  { id: "cat_network_infra", code: "NETWORK_INFRASTRUCTURE", name: "Network & Infrastructure", description: null, sortOrder: 50, isActive: true },
+  { id: "cat_cloud_hosting", code: "CLOUD_HOSTING", name: "Cloud & Hosting", description: null, sortOrder: 60, isActive: true },
+  { id: "cat_other", code: "OTHER", name: "Other", description: null, sortOrder: 70, isActive: true },
+];
+
 const purchaseRequests = [
-  { id: "pr_seed_2606001", prNo: "ITPR_2606001", refNo: "REF-IT-2606-0044", companyId: "co_grandlink", branchId: "br_grandlink_hq", departmentId: "dep_it_operation", divisionId: "div_it_infra", documentDate: "2026-06-20", status: "PRINTED", totalAmount: "116255.50", subtotal: "108650.00", vatAmount: "7605.50" },
-  { id: "pr_seed_2606002", prNo: "ITPR_2606002", refNo: "REF-IT-2606-0045", companyId: "co_sonic04", branchId: "br_sonic04", departmentId: "dep_infra", divisionId: "div_network", documentDate: "2026-06-21", status: "GENERATED", totalAmount: "78950.00", subtotal: "73785.05", vatAmount: "5164.95" },
-  { id: "pr_seed_2606003", prNo: "ITPR_2606003", refNo: "REF-IT-2606-0046", companyId: "co_itcity", branchId: "br_itcity", departmentId: "dep_helpdesk", divisionId: "div_service_desk", documentDate: "2026-06-22", status: "DRAFT", totalAmount: "24500.00", subtotal: "22897.20", vatAmount: "1602.80" },
-  { id: "pr_seed_2606004", prNo: "ITPR_2606004", refNo: "REF-IT-2606-0047", companyId: "co_sonichq", branchId: "br_sonichq", departmentId: "dep_infra", divisionId: "div_server", documentDate: "2026-06-23", status: "SIGNED", totalAmount: "324210.35", subtotal: "302065.75", vatAmount: "22144.60" },
-  { id: "pr_seed_2606005", prNo: "ITPR_2606005", refNo: "REF-IT-2606-0048", companyId: "co_sonic04", branchId: "br_sonic04", departmentId: "dep_it_operation", divisionId: "div_endpoint", documentDate: "2026-06-24", status: "CANCELLED", totalAmount: "12500.00", subtotal: "11682.24", vatAmount: "817.76" },
-  { id: "pr_seed_2606006", prNo: "ITPR_2606006", refNo: "REF-IT-2606-0049", companyId: "co_sonic04", branchId: "br_sonic04", departmentId: "dep_infra", divisionId: "div_network", documentDate: "2026-06-25", status: "REISSUED", totalAmount: "32421.00", subtotal: "30300.00", vatAmount: "2121.00" },
+  { id: "pr_seed_2606001", prNo: "ITPR_2606001", refNo: "REF-IT-2606-0044", companyId: "co_grandlink", branchId: "br_grandlink_hq", departmentId: "dep_it_operation", divisionId: "div_it_infra", categoryId: "cat_hardware", documentDate: "2026-06-20", status: "PRINTED", totalAmount: "116255.50", subtotal: "108650.00", vatAmount: "7605.50" },
+  { id: "pr_seed_2606002", prNo: "ITPR_2606002", refNo: "REF-IT-2606-0045", companyId: "co_sonic04", branchId: "br_sonic04", departmentId: "dep_infra", divisionId: "div_network", categoryId: "cat_network_infra", documentDate: "2026-06-21", status: "GENERATED", totalAmount: "78950.00", subtotal: "73785.05", vatAmount: "5164.95" },
+  { id: "pr_seed_2606003", prNo: "ITPR_2606003", refNo: "REF-IT-2606-0046", companyId: "co_itcity", branchId: "br_itcity", departmentId: "dep_helpdesk", divisionId: "div_service_desk", categoryId: "cat_subscription_renewal", documentDate: "2026-06-22", status: "DRAFT", totalAmount: "24500.00", subtotal: "22897.20", vatAmount: "1602.80" },
+  { id: "pr_seed_2606004", prNo: "ITPR_2606004", refNo: "REF-IT-2606-0047", companyId: "co_sonichq", branchId: "br_sonichq", departmentId: "dep_infra", divisionId: "div_server", categoryId: "cat_software_license", documentDate: "2026-06-23", status: "SIGNED", totalAmount: "324210.35", subtotal: "302065.75", vatAmount: "22144.60" },
+  { id: "pr_seed_2606005", prNo: "ITPR_2606005", refNo: "REF-IT-2606-0048", companyId: "co_sonic04", branchId: "br_sonic04", departmentId: "dep_it_operation", divisionId: "div_endpoint", categoryId: "cat_service_maintenance", documentDate: "2026-06-24", status: "CANCELLED", totalAmount: "12500.00", subtotal: "11682.24", vatAmount: "817.76" },
+  { id: "pr_seed_2606006", prNo: "ITPR_2606006", refNo: "REF-IT-2606-0049", companyId: "co_sonic04", branchId: "br_sonic04", departmentId: "dep_infra", divisionId: "div_network", categoryId: "cat_cloud_hosting", documentDate: "2026-06-25", status: "REISSUED", totalAmount: "32421.00", subtotal: "30300.00", vatAmount: "2121.00" },
 ];
 
 const firstPrItems = [
@@ -340,6 +350,19 @@ async function seedMasters() {
       update: { isActive: true },
     });
   }
+
+  for (const category of prCategories) {
+    await prisma.purchaseRequestCategory.upsert({
+      where: { code: category.code },
+      create: category,
+      update: {
+        name: category.name,
+        description: category.description,
+        sortOrder: category.sortOrder,
+        isActive: category.isActive,
+      },
+    });
+  }
 }
 
 async function seedTemplateAndRunningNumber(adminId) {
@@ -397,6 +420,7 @@ async function seedPurchaseRequests(adminId) {
         branchId: pr.branchId,
         departmentId: pr.departmentId,
         divisionId: pr.divisionId,
+        categoryId: pr.categoryId,
         documentDate: new Date(`${pr.documentDate}T00:00:00.000Z`),
         requiredDate: new Date("2026-07-02T00:00:00.000Z"),
         purpose: "ซื้อใหม่",
@@ -417,6 +441,7 @@ async function seedPurchaseRequests(adminId) {
       },
       update: {
         status: pr.status,
+        categoryId: pr.categoryId,
         subtotal: pr.subtotal,
         vatAmount: pr.vatAmount,
         totalAmount: pr.totalAmount,
