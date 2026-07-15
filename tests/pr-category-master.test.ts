@@ -1,10 +1,32 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  prisma: {
+    $transaction: vi.fn(),
+  },
+  requirePermission: vi.fn(),
+}));
+
+vi.mock("../lib/auth/current-user", () => ({
+  requirePermission: mocks.requirePermission,
+}));
+
+vi.mock("../lib/prisma", () => ({
+  prisma: mocks.prisma,
+}));
+
 import {
   mapPrCategoryRecordToRow,
   normalizePrCategoryFilters,
   parsePrCategoryInput,
+  updatePrCategoryFromFormData,
   validateCategoryCodeMutation,
 } from "../lib/pr-category-master";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.requirePermission.mockResolvedValue({ id: "user_admin" });
+});
 
 describe("PR category master", () => {
   test("normalizes filters and category input", () => {
@@ -48,5 +70,44 @@ describe("PR category master", () => {
       status: "Active",
       updatedAt: "2026-07-15T06:00:00.000Z",
     });
+  });
+
+  test("updates category code under Serializable isolation", async () => {
+    const category = {
+      _count: { purchaseRequests: 0 },
+      code: "HARDWARE",
+      description: "Devices and peripherals",
+      id: "cat_hardware",
+      isActive: true,
+      name: "Hardware",
+      sortOrder: 10,
+      updatedAt: new Date("2026-07-15T06:00:00.000Z"),
+    };
+    const tx = {
+      auditLog: { create: vi.fn().mockResolvedValue({ id: "audit_1" }) },
+      purchaseRequestCategory: {
+        findUnique: vi.fn().mockResolvedValueOnce(category).mockResolvedValueOnce(null),
+        update: vi.fn().mockResolvedValue({ ...category, code: "DEVICE" }),
+      },
+    };
+    mocks.prisma.$transaction.mockImplementation(async (callback: (txArg: typeof tx) => unknown) => callback(tx));
+    const formData = new FormData();
+    formData.set("categoryId", category.id);
+    formData.set("code", "DEVICE");
+    formData.set("description", category.description);
+    formData.set("name", category.name);
+    formData.set("sortOrder", String(category.sortOrder));
+
+    await updatePrCategoryFromFormData(formData);
+
+    expect(tx.purchaseRequestCategory.findUnique).toHaveBeenCalledWith({
+      include: { _count: { select: { purchaseRequests: true } } },
+      where: { id: category.id },
+    });
+    expect(tx.purchaseRequestCategory.update).toHaveBeenCalledWith({
+      data: { code: "DEVICE", description: category.description, name: category.name, sortOrder: category.sortOrder },
+      where: { id: category.id },
+    });
+    expect(mocks.prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "Serializable" });
   });
 });

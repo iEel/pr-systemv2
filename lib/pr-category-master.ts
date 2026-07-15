@@ -232,39 +232,42 @@ export async function updatePrCategoryFromFormData(formData: FormData) {
   });
 
   try {
-    return await prisma.$transaction(async (tx) => {
-      const category = await tx.purchaseRequestCategory.findUnique({
-        include: { _count: { select: { purchaseRequests: true } } },
-        where: { id: categoryId },
-      });
+    return await prisma.$transaction(
+      async (tx) => {
+        const category = await tx.purchaseRequestCategory.findUnique({
+          include: { _count: { select: { purchaseRequests: true } } },
+          where: { id: categoryId },
+        });
 
-      if (!category) {
-        throw new Error("Category not found");
-      }
+        if (!category) {
+          throw new Error("Category not found");
+        }
 
-      validateCategoryCodeMutation({
-        currentCode: category.code,
-        nextCode: data.code,
-        referenceCount: category._count.purchaseRequests,
-      });
+        validateCategoryCodeMutation({
+          currentCode: category.code,
+          nextCode: data.code,
+          referenceCount: category._count.purchaseRequests,
+        });
 
-      const existing = await tx.purchaseRequestCategory.findUnique({ select: { id: true }, where: { code: data.code } });
+        const existing = await tx.purchaseRequestCategory.findUnique({ select: { id: true }, where: { code: data.code } });
 
-      if (existing && existing.id !== categoryId) {
-        throw new Error("Category code already exists");
-      }
+        if (existing && existing.id !== categoryId) {
+          throw new Error("Category code already exists");
+        }
 
-      const updated = await tx.purchaseRequestCategory.update({ data, where: { id: categoryId } });
+        const updated = await tx.purchaseRequestCategory.update({ data, where: { id: categoryId } });
 
-      await createCategoryAudit(tx, {
-        action: "PR category updated",
-        actorId: actor.id,
-        category: updated,
-        detail: `Updated PR category ${updated.code} - ${updated.name}`,
-      });
+        await createCategoryAudit(tx, {
+          action: "PR category updated",
+          actorId: actor.id,
+          category: updated,
+          detail: `Updated PR category ${updated.code} - ${updated.name}`,
+        });
 
-      return updated;
-    });
+        return updated;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   } catch (error) {
     rethrowCategoryCodeUniqueError(error);
   }
