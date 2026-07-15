@@ -42,13 +42,15 @@ export function PRList({ requests }: { requests: PurchaseRequestListItem[] }) {
   const [search, setSearch] = useState("");
   const [company, setCompany] = useState("All");
   const [branch, setBranch] = useState("All");
+  const [category, setCategory] = useState("All");
   const [status, setStatus] = useState<PRStatus | "All">("All");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [archiveStatus, setArchiveStatus] = useState<ArchiveStatus>("Signed");
 
   const companies = useMemo(() => ["All", ...Array.from(new Set(requests.map((item) => item.company)))], [requests]);
   const branches = useMemo(() => ["All", ...Array.from(new Set(requests.map((item) => item.branch)))], [requests]);
-  const rows = useMemo(() => filterPurchaseRequests(requests, { search, company, branch, status }), [branch, company, requests, search, status]);
+  const categories = useMemo(() => ["All", ...Array.from(new Set(requests.map((item) => item.category)))], [requests]);
+  const rows = useMemo(() => filterPurchaseRequests(requests, { search, company, branch, category, status }), [branch, category, company, requests, search, status]);
   const workflowRows = useMemo(() => rows.filter((item) => activeBoardColumns.includes(item.status)), [rows]);
   const archiveRows = useMemo(() => rows.filter((item) => completedArchiveStatuses.includes(item.status as ArchiveStatus)), [rows]);
   const visibleArchiveRows = useMemo(() => archiveRows.filter((item) => item.status === archiveStatus), [archiveRows, archiveStatus]);
@@ -69,7 +71,7 @@ export function PRList({ requests }: { requests: PurchaseRequestListItem[] }) {
         }
       />
       <Card className="p-4">
-        <div className="grid gap-3 lg:grid-cols-[1.2fr_repeat(3,minmax(150px,0.5fr))_auto]">
+        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-[minmax(220px,1.2fr)_repeat(4,minmax(140px,0.5fr))_auto]">
           <label className="relative">
             <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
@@ -88,6 +90,11 @@ export function PRList({ requests }: { requests: PurchaseRequestListItem[] }) {
           <select className={inputClass()} onChange={(event) => setBranch(event.target.value)} value={branch}>
             {branches.map((item) => (
               <option key={item}>{item === "All" ? "Branch ทั้งหมด" : item}</option>
+            ))}
+          </select>
+          <select className={inputClass()} onChange={(event) => setCategory(event.target.value)} value={category}>
+            {categories.map((item) => (
+              <option key={item}>{item === "All" ? "Category ทั้งหมด" : item}</option>
             ))}
           </select>
           <select className={inputClass()} onChange={(event) => setStatus(event.target.value as PRStatus | "All")} value={status}>
@@ -163,7 +170,10 @@ function PRTable({ requests, rows }: { requests: PurchaseRequestListItem[]; rows
                     <Link href={actions.detailHref}>{request.prNo}</Link>
                   </td>
                   <td className={tableCellClass}>{formatDate(request.date)}</td>
-                  <td className={`${tableCellClass} font-semibold text-ink`}>{request.company}</td>
+                  <td className={`${tableCellClass} font-semibold text-ink`}>
+                    <div>{request.company}</div>
+                    <div className="mt-1 text-xs font-semibold text-muted">{request.category}</div>
+                  </td>
                   <td className={tableCellClass}>{request.branch}</td>
                   <td className={`${tableCellClass} text-right font-semibold`}>{formatTHB(request.total)}</td>
                   <td className={tableCellClass}><Badge tone={statusInfo.tone}>{statusInfo.label}</Badge></td>
@@ -342,6 +352,7 @@ function PRBoardCard({ compact = false, request }: { compact?: boolean; request:
           </Link>
           <div className="mt-1 truncate text-sm font-bold text-ink">{request.company}</div>
           <div className="truncate text-xs font-semibold text-muted">{request.branch}</div>
+          <div className="mt-2 flex flex-wrap gap-1"><Badge tone="info">{request.category}</Badge></div>
         </div>
         {compact ? <Badge tone={statusInfo.tone}>{statusInfo.label}</Badge> : null}
       </div>

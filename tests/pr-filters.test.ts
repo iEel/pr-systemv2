@@ -28,4 +28,35 @@ describe("filterPurchaseRequests", () => {
       status: "Generated",
     });
   });
+
+  it("filters purchase requests by exact category and searches category text", () => {
+    const requests = [
+      {
+        prNo: "ITPR_2606001",
+        company: "Grandlink",
+        branch: "HQ",
+        department: "IT Operation",
+        division: "Infrastructure",
+        createdBy: "Admin User",
+        category: "Hardware & Equipment",
+        status: "Printed" as const,
+      },
+      {
+        prNo: "ITPR_2606002",
+        company: "Grandlink",
+        branch: "HQ",
+        department: "IT Operation",
+        division: "Infrastructure",
+        createdBy: "Admin User",
+        category: "Not categorized",
+        status: "Draft" as const,
+      },
+    ];
+
+    const result = filterPurchaseRequests(requests, { category: "Hardware & Equipment" });
+    const searchResult = filterPurchaseRequests(requests, { search: "hardware" });
+
+    expect(result.every((request) => request.category === "Hardware & Equipment")).toBe(true);
+    expect(searchResult).toEqual([requests[0]]);
+  });
 });

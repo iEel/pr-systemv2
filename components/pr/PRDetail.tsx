@@ -251,6 +251,7 @@ export function PRDetail({ detail }: { detail: PurchaseRequestDetail }) {
                     ["Ref No.", header.refNo],
                     ["Document Date", formatDate(header.date)],
                     ["Required Date", header.requiredDate ? formatDate(header.requiredDate) : "-"],
+                    ["Category", header.category],
                     ["Department", header.department],
                     ["Division", header.division],
                     ["Purchase Type", header.purpose],

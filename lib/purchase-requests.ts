@@ -10,6 +10,8 @@ export type PurchaseRequestListItem = {
   department: string;
   division: string;
   createdBy: string;
+  category: string;
+  categoryId: string | null;
   total: number;
   status: PRStatus;
 };
@@ -25,6 +27,8 @@ export type PurchaseRequestDetail = {
     branch: string;
     department: string;
     division: string;
+    category: string;
+    categoryId: string | null;
     purpose: string;
     purchaseMethod: string;
     createdBy: string;
@@ -82,11 +86,12 @@ type PurchaseRequestRecord = {
   department: { name: string };
   division: { name: string } | null;
   createdBy: { displayName: string };
+  category: { id: string; name: string } | null;
 };
 
 type PurchaseRequestDetailRecord = PurchaseRequestRecord & {
   categoryId: string | null;
-  category: { id: string; isActive: boolean } | null;
+  category: { id: string; isActive: boolean; name: string } | null;
   refNo: string | null;
   requiredDate: Date | null;
   purpose: string;
@@ -200,6 +205,8 @@ export function mapPurchaseRequestRecordToListItem(record: PurchaseRequestRecord
     department: record.department.name,
     division: record.division?.name || "-",
     createdBy: record.createdBy.displayName,
+    category: record.category?.name || "Not categorized",
+    categoryId: record.category?.id || null,
     total: toNumber(record.totalAmount),
     status: mapDbStatusToUiStatus(record.status),
   };
@@ -221,6 +228,8 @@ export function mapPurchaseRequestDetailRecord(
       branch: record.branch.name,
       department: record.department.name,
       division: record.division?.name || "-",
+      category: record.category?.name || "Not categorized",
+      categoryId: record.category?.id || null,
       purpose: record.purpose,
       purchaseMethod: record.purchaseMethod,
       createdBy: record.createdBy.displayName,
@@ -281,6 +290,7 @@ export async function getPurchaseRequestListItems({ take }: { take?: number } = 
   const records = await prisma.purchaseRequest.findMany({
     include: {
       branch: true,
+      category: { select: { id: true, name: true } },
       company: true,
       createdBy: true,
       department: true,
@@ -299,7 +309,7 @@ export async function getPurchaseRequestDetail(id: string) {
     include: {
       attachments: { orderBy: [{ type: "asc" }, { version: "desc" }] },
       branch: true,
-      category: true,
+      category: { select: { id: true, isActive: true, name: true } },
       company: true,
       createdBy: true,
       department: true,

@@ -21,4 +21,12 @@ describe("PR detail command center", () => {
     expect(source).toContain("text-xs leading-5 text-blue-800");
     expect(source).toContain("min-h-9 px-3 py-1.5 text-xs");
   });
+
+  test("shows category in document information, including legacy category text", () => {
+    const source = readFileSync("components/pr/PRDetail.tsx", "utf8");
+
+    expect(source).toContain("Document information");
+    expect(source).toContain("Category");
+    expect(source).toContain('["Category", header.category]');
+  });
 });

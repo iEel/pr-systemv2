@@ -22,7 +22,7 @@ describe("purchase request detail mapping", () => {
         printedAt: new Date("2026-06-20T03:05:00.000Z"),
         signedAt: null,
         categoryId: "cat_hardware",
-        category: { id: "cat_hardware", isActive: true },
+        category: { id: "cat_hardware", isActive: true, name: "Hardware & Equipment" },
         company: { displayName: "Grandlink" },
         branch: { name: "HQ" },
         department: { name: "IT Operation" },
@@ -87,6 +87,8 @@ describe("purchase request detail mapping", () => {
       status: "Printed",
       company: "Grandlink",
       branch: "HQ",
+      category: "Hardware & Equipment",
+      categoryId: "cat_hardware",
       subtotal: 108650,
       vatAmount: 7605.5,
       total: 116255.5,
@@ -147,7 +149,7 @@ describe("purchase request detail mapping", () => {
         prNo: "ITPR_2606002",
         refNo: null,
         categoryId: "cat_inactive",
-        category: { id: "cat_inactive", isActive: false },
+        category: { id: "cat_inactive", isActive: false, name: "Inactive Category" },
         documentDate: new Date("2026-07-01T00:00:00.000Z"),
         requiredDate: null,
         purpose: "ซื้อใหม่",
@@ -176,11 +178,46 @@ describe("purchase request detail mapping", () => {
     expect(detail.reissue.categories).toEqual([{ id: "cat_hardware", label: "HARDWARE - Hardware & Equipment" }]);
   });
 
+  test("maps legacy purchase requests without a category as not categorized", () => {
+    const detail = mapPurchaseRequestDetailRecord(
+      {
+        id: "pr_legacy",
+        prNo: "ITPR_2606003",
+        refNo: null,
+        categoryId: null,
+        category: null,
+        documentDate: new Date("2026-07-01T00:00:00.000Z"),
+        requiredDate: null,
+        purpose: "Legacy PR",
+        purchaseMethod: "Direct purchase",
+        subtotal: 100,
+        vatRate: 7,
+        vatAmount: 7,
+        totalAmount: 107,
+        status: "DRAFT",
+        generatedAt: null,
+        printedAt: null,
+        signedAt: null,
+        company: { displayName: "Grandlink" },
+        branch: { name: "HQ" },
+        department: { name: "IT" },
+        division: null,
+        createdBy: { displayName: "Admin User" },
+        items: [],
+        attachments: [],
+      },
+      [],
+    );
+
+    expect(detail.header.category).toBe("Not categorized");
+    expect(detail.header.categoryId).toBeNull();
+  });
+
   test("loads the source category and ordered active options for the reissue read model", () => {
     const source = readFileSync("lib/purchase-requests.ts", "utf8");
     const detailLoader = source.slice(source.indexOf("export async function getPurchaseRequestDetail"));
 
-    expect(detailLoader).toContain("category: true");
+    expect(detailLoader).toContain("category: { select: { id: true, isActive: true, name: true } }");
     expect(detailLoader).toContain('orderBy: [{ sortOrder: "asc" }, { name: "asc" }]');
     expect(detailLoader).toContain("where: { isActive: true }");
   });

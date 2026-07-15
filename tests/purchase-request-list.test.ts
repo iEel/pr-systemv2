@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { mapPurchaseRequestRecordToListItem } from "../lib/purchase-requests";
 
@@ -14,6 +15,7 @@ describe("purchase request list mapping", () => {
       department: { name: "IT Operation" },
       division: { name: "Infrastructure" },
       createdBy: { displayName: "Admin User" },
+      category: { id: "cat_hardware", name: "Hardware & Equipment" },
     });
 
     expect(row).toEqual({
@@ -25,6 +27,8 @@ describe("purchase request list mapping", () => {
       department: "IT Operation",
       division: "Infrastructure",
       createdBy: "Admin User",
+      category: "Hardware & Equipment",
+      categoryId: "cat_hardware",
       total: 116255.5,
       status: "Printed",
     });
@@ -42,10 +46,23 @@ describe("purchase request list mapping", () => {
       department: { name: "Infrastructure" },
       division: null,
       createdBy: { displayName: "Admin User" },
+      category: null,
     });
 
     expect(row.prNo).toBe("Draft pending");
     expect(row.division).toBe("-");
+    expect(row.category).toBe("Not categorized");
+    expect(row.categoryId).toBeNull();
     expect(row.status).toBe("Draft");
+  });
+
+  test("keeps category compact in the list table and visible on board cards", () => {
+    const source = readFileSync("components/pr/PRList.tsx", "utf8");
+
+    expect(source).toContain("const categories = useMemo");
+    expect(source).toContain("filterPurchaseRequests(requests, { search, company, branch, category, status })");
+    expect(source).toContain("Category ทั้งหมด");
+    expect(source).toContain("{request.category}</div>");
+    expect(source).toContain('<Badge tone="info">{request.category}</Badge>');
   });
 });
