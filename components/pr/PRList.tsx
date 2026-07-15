@@ -352,7 +352,11 @@ function PRBoardCard({ compact = false, request }: { compact?: boolean; request:
           </Link>
           <div className="mt-1 truncate text-sm font-bold text-ink">{request.company}</div>
           <div className="truncate text-xs font-semibold text-muted">{request.branch}</div>
-          <div className="mt-2 flex flex-wrap gap-1"><Badge tone="info">{request.category}</Badge></div>
+          <div className="mt-2">
+            <span className="inline-block max-w-full whitespace-normal break-words rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-left text-xs font-semibold leading-4 text-blue-700">
+              {request.category}
+            </span>
+          </div>
         </div>
         {compact ? <Badge tone={statusInfo.tone}>{statusInfo.label}</Badge> : null}
       </div>

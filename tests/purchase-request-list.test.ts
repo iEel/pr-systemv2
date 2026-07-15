@@ -56,13 +56,16 @@ describe("purchase request list mapping", () => {
     expect(row.status).toBe("Draft");
   });
 
-  test("keeps category compact in the list table and visible on board cards", () => {
+  test("keeps category compact in the list table and wraps long category names inside board cards", () => {
     const source = readFileSync("components/pr/PRList.tsx", "utf8");
+    const boardCardSource = source.slice(source.indexOf("function PRBoardCard"));
 
     expect(source).toContain("const categories = useMemo");
     expect(source).toContain("filterPurchaseRequests(requests, { search, company, branch, category, status })");
     expect(source).toContain("Category ทั้งหมด");
     expect(source).toContain("{request.category}</div>");
-    expect(source).toContain('<Badge tone="info">{request.category}</Badge>');
+    expect(boardCardSource).toContain('className="inline-block max-w-full whitespace-normal break-words');
+    expect(boardCardSource).toContain("{request.category}");
+    expect(boardCardSource).not.toContain('<Badge tone="info">{request.category}</Badge>');
   });
 });

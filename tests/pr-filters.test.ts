@@ -56,6 +56,8 @@ describe("filterPurchaseRequests", () => {
     const result = filterPurchaseRequests(requests, { category: "Hardware & Equipment" });
     const searchResult = filterPurchaseRequests(requests, { search: "hardware" });
 
+    expect(result).toHaveLength(1);
+    expect(result[0].prNo).toBe("ITPR_2606001");
     expect(result.every((request) => request.category === "Hardware & Equipment")).toBe(true);
     expect(searchResult).toEqual([requests[0]]);
   });
