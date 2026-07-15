@@ -1,6 +1,6 @@
 # Retention Policy
 
-Last updated: 2026-07-01
+Last updated: 2026-07-15
 
 This policy is a baseline for UAT and first production. Confirm final retention with finance, audit, and legal requirements before deleting controlled records.
 
@@ -25,6 +25,7 @@ This policy is a baseline for UAT and first production. Confirm final retention 
 | Template preview PDFs | 180 days after template archive | Regenerable evidence, not the controlled PR document. |
 | PDF QA artifacts | 180 days after UAT/release | Stored under `output/pdf-qa`. |
 | PM2/nginx logs | 90 days online | Keep longer in centralized logging if available. |
+| Recurring worker log (`/var/log/it-pr-dms/recurring-pr.log`) | 90 days online | Rotate with logrotate; keep longer in centralized logging if available. |
 | Daily backups | 30 days | Adjust after backup storage sizing. |
 | Monthly backups | 12 months | Keep off-server. |
 | Yearly backups | 7 years | Keep encrypted and access-controlled. |
@@ -34,6 +35,7 @@ This policy is a baseline for UAT and first production. Confirm final retention 
 Safe to automate after UAT approval:
 
 - Old PM2/nginx logs through logrotate.
+- `/var/log/it-pr-dms/recurring-pr.log` through logrotate, retaining 90 days online.
 - `output/pdf-qa` artifacts older than the approved window.
 - `storage/template-previews` for archived templates older than the approved window.
 

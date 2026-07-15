@@ -1,6 +1,6 @@
 # Ubuntu + nginx + PM2 Deployment
 
-Last updated: 2026-07-01
+Last updated: 2026-07-15
 
 This runbook is the baseline deployment path for UAT and the first production release.
 
@@ -154,6 +154,41 @@ Browser checks:
 - Issue PR through Carbone.
 - Upload quotation.
 - Export report XLSX.
+
+## Recurring PR Worker
+
+The recurring PR worker is a local cron command owned by the application service user (for example, `it-pr-dms`). It is not a PM2 process and has no public nginx route.
+
+Create the log directory and lock file once, granting the application service user access:
+
+```bash
+sudo install -d -o it-pr-dms -g it-pr-dms /var/log/it-pr-dms
+sudo install -o it-pr-dms -g it-pr-dms -m 0644 /dev/null /var/lock/it-pr-dms-recurring.lock
+```
+
+Install this crontab as the application service user with `crontab -e`:
+
+```cron
+CRON_TZ=Asia/Bangkok
+0 1 * * * cd /var/www/it-pr-dms/current && /usr/bin/flock -n /var/lock/it-pr-dms-recurring.lock /usr/bin/npm run recurring-pr:process >> /var/log/it-pr-dms/recurring-pr.log 2>&1
+```
+
+`flock -n` makes the job single-run: a second invocation exits immediately while the active run retains the lock. The command loads the release `.env` through the `/var/www/it-pr-dms/current` symlink, writes one safe JSON result, and returns exit code `0` when every schedule is handled, `2` when an individual schedule fails, or `1` when the worker cannot start or complete. No raw errors, environment values, or secrets are logged by the CLI.
+
+Configure logrotate for `/var/log/it-pr-dms/recurring-pr.log`; use the retention period in `RETENTION_POLICY.md`:
+
+```conf
+/var/log/it-pr-dms/recurring-pr.log {
+  daily
+  rotate 90
+  compress
+  missingok
+  notifempty
+  create 0640 it-pr-dms it-pr-dms
+}
+```
+
+Do not add an nginx location or public HTTP route for this worker.
 
 ## Rollback
 

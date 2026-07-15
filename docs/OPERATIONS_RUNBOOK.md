@@ -1,6 +1,6 @@
 # Operations Runbook
 
-Last updated: 2026-07-01
+Last updated: 2026-07-15
 
 This is the minimum operating procedure for UAT and first production.
 
@@ -51,6 +51,21 @@ SQL Server:
 - Review failed login spikes.
 - Review migration history in `_prisma_migrations`.
 - Review database backup history.
+
+Recurring PR worker:
+
+```bash
+sudo -u it-pr-dms sh -lc 'cd /var/www/it-pr-dms/current && npm run recurring-pr:process'
+sudo tail -n 100 /var/log/it-pr-dms/recurring-pr.log
+```
+
+The manual command prints one safe JSON summary. An exit code 0 means all due schedules completed or were skipped; exit code 2 means one or more schedules failed after the worker continued with the others; exit code 1 means an unrecoverable worker failure. The CLI always disconnects Prisma before exiting.
+
+## Recurring PR Maintenance And Recovery
+
+During maintenance, disable the application service user's cron entry (comment out the `recurring-pr:process` line with `crontab -e`) before taking the application down. Restore the entry after maintenance and run the manual command once. The worker performs catch-up: it finds due schedules missed during downtime and creates at most one annual Draft per schedule occurrence. Do not delete the lock file while a run is active; `flock` releases it automatically when the process exits.
+
+If a run exits with code 2, inspect the safe JSON summary and the schedule run history. Correct the schedule data, then use the authorized Retry action for that failed run. Cron does not repeatedly retry persisted validation failures.
 
 App audit:
 
