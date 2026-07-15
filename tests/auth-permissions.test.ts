@@ -6,6 +6,11 @@ describe("RBAC permissions", () => {
     for (const permission of rolePermissions.ADMIN) {
       expect(hasPermission("ADMIN", permission)).toBe(true);
     }
+
+    expect(hasPermission("ADMIN", "PR_RECURRING_MANAGE")).toBe(true);
+    expect(hasPermission("IT_ADMIN", "PR_RECURRING_MANAGE")).toBe(true);
+    expect(hasPermission("IT_USER", "PR_RECURRING_MANAGE")).toBe(false);
+    expect(hasPermission("VIEWER", "PR_RECURRING_MANAGE")).toBe(false);
   });
 
   test("allows IT users to run PR document-control commands but not template management", () => {

@@ -12,6 +12,7 @@ describe("auth route access", () => {
     expect(isProtectedAppPath("/dashboard")).toBe(true);
     expect(isProtectedAppPath("/settings/users")).toBe(true);
     expect(isProtectedAppPath("/masters/budgets")).toBe(true);
+    expect(isProtectedAppPath("/recurring-pr")).toBe(true);
     expect(isProtectedAppPath("/login")).toBe(false);
     expect(isProtectedAppPath("/api/auth/session")).toBe(false);
     expect(isProtectedAppPath("/_next/static/chunk.js")).toBe(false);
@@ -25,6 +26,7 @@ describe("auth route access", () => {
     expect(requiredPermissionForPath("/masters/pr-categories")).toBe("MASTER_DATA_MANAGE");
     expect(requiredPermissionForPath("/templates")).toBe("TEMPLATE_MANAGE");
     expect(requiredPermissionForPath("/audit-logs/export")).toBe("AUDIT_VIEW");
+    expect(requiredPermissionForPath("/recurring-pr")).toBeNull();
     expect(requiredPermissionForPath("/dashboard")).toBeNull();
   });
 

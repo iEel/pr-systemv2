@@ -1,6 +1,6 @@
 import { hasPermission, type Permission, type Role } from "./permissions";
 
-const protectedPrefixes = ["/audit-logs", "/dashboard", "/forbidden", "/masters", "/pr", "/reports", "/settings", "/templates"];
+const protectedPrefixes = ["/audit-logs", "/dashboard", "/forbidden", "/masters", "/pr", "/recurring-pr", "/reports", "/settings", "/templates"];
 
 const publicPrefixes = ["/api/auth", "/_next", "/login"];
 
