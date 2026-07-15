@@ -173,6 +173,21 @@ describe("report view model", () => {
     ]);
     expect(view.statusSummary).toContainEqual({ count: 1, status: "Draft", totalAmount: 50 });
     expect(view.detailRows[0]).toMatchObject({ prNo: "ITPR_2606003", status: "Cancelled", totalAmount: 20 });
+    expect(view.categorySummary).toContainEqual({ category: "Not categorized", categoryId: null, count: 4, totalAmount: 570 });
+    expect(view.detailRows[0]).toMatchObject({ category: "Not categorized" });
+  });
+
+  test("sorts category amount ties by category name", () => {
+    const view = buildReportViewModel({
+      budgets: [],
+      filters: { categoryId: "All", companyId: "All", month: "All", status: "All", year: 2026 },
+      records: [
+        { ...records[0], id: "pr_beta", category: { id: "cat_beta", name: "Beta" }, totalAmount: "100.00" },
+        { ...records[0], id: "pr_alpha", category: { id: "cat_alpha", name: "Alpha" }, totalAmount: "100.00" },
+      ],
+    });
+
+    expect(view.categorySummary.map((row) => row.category)).toEqual(["Alpha", "Beta"]);
   });
 
   test("flags missing budget context when PR amounts exist without an active budget", () => {
@@ -206,7 +221,7 @@ describe("report view model", () => {
 
   test("groups filtered purchase requests by category and exports category details", () => {
     const view = buildReportViewModel({
-      budgets: [],
+      budgets: [{ budgetAmount: "2000.00" }],
       filters: { categoryId: "cat_hardware", companyId: "All", month: "All", status: "All", year: 2026 },
       records: [
         {
@@ -240,6 +255,30 @@ describe("report view model", () => {
 
     expect(view.categorySummary).toEqual([{ category: "Hardware & Equipment", categoryId: "cat_hardware", count: 1, totalAmount: 1000 }]);
     expect(view.detailRows).toEqual([expect.objectContaining({ category: "Hardware & Equipment" })]);
-    expect(buildReportWorkbookSheets(view).find((sheet) => sheet.name === "By Category")?.rows[0]).toEqual(["Category", "PR Count", "Total Amount"]);
+    const sheets = buildReportWorkbookSheets(view);
+
+    expect(sheets.find((sheet) => sheet.name === "Summary")?.rows).toEqual([
+      ["Metric", "Value"],
+      ["Year", 2026],
+      ["Month", "All"],
+      ["Company", "All"],
+      ["Status", "All"],
+      ["Category", "cat_hardware"],
+      ["Total PR", 1],
+      ["Total Amount", 1000],
+      ["Used Amount", 1000],
+      ["Pending Amount", 0],
+      ["Cancelled Amount", 0],
+      ["Total Budget", 2000],
+      ["Remaining Budget", 1000],
+    ]);
+    expect(sheets.find((sheet) => sheet.name === "By Category")?.rows).toEqual([
+      ["Category", "PR Count", "Total Amount"],
+      ["Hardware & Equipment", 1, 1000],
+    ]);
+    expect(sheets.find((sheet) => sheet.name === "PR Detail")?.rows).toEqual([
+      ["Date", "PR No", "Company", "Branch", "Department", "Division", "Category", "Status", "Created By", "Total Amount"],
+      ["2026-06-20", "ITPR_2606007", "Sonic", "Sonic HQ", "IT", "-", "Hardware & Equipment", "Generated", "Admin User", 1000],
+    ]);
   });
 });

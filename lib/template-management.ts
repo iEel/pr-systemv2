@@ -47,6 +47,8 @@ const knownTemplateTags = new Set<string>([
   "d.companyFooterImage",
   "d.branchCode",
   "d.branchAddress",
+  "d.categoryCode",
+  "d.categoryName",
   "d.division",
   "d.purposeNewMark",
   "d.purposeReplacementMark",

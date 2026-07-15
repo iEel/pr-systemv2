@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/current-user";
-import { buildReportWorkbookSheets, getReportPageData, normalizeReportFilters } from "@/lib/reporting";
+import { buildReportWorkbookSheets, getReportPageData } from "@/lib/reporting";
 import { buildXlsxWorkbook } from "@/lib/xlsx";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +19,7 @@ export async function GET(request: Request) {
   await requireCurrentUser();
 
   const url = new URL(request.url);
-  const filters = normalizeReportFilters(readFilters(url.searchParams));
-  const report = await getReportPageData(filters);
+  const report = await getReportPageData(readFilters(url.searchParams));
   const workbook = await buildXlsxWorkbook({ sheets: buildReportWorkbookSheets(report) });
   const arrayBuffer = new ArrayBuffer(workbook.byteLength);
   new Uint8Array(arrayBuffer).set(workbook);
@@ -31,7 +30,7 @@ export async function GET(request: Request) {
   return new NextResponse(body, {
     headers: {
       "Cache-Control": "no-store",
-      "Content-Disposition": `attachment; filename="pr-report-${filters.year}.xlsx"`,
+      "Content-Disposition": `attachment; filename="pr-report-${report.filters.year}.xlsx"`,
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "X-Content-Type-Options": "nosniff",
     },

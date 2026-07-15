@@ -415,13 +415,12 @@ async function loadCategoryOptions() {
 
   const categories = await prisma.purchaseRequestCategory.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    select: { id: true, name: true },
-    where: { isActive: true },
+    select: { id: true, isActive: true, name: true },
   });
 
   return [
     { label: "ทุกหมวดหมู่", value: "All" },
-    ...categories.map((category) => ({ label: category.name, value: category.id })),
+    ...categories.map((category) => ({ label: category.isActive ? category.name : `${category.name} (Inactive)`, value: category.id })),
   ];
 }
 

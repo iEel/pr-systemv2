@@ -12,6 +12,7 @@ import {
   mergeTemplatePreviewResult,
   normalizeTemplatePreview,
   normalizeTemplateValidation,
+  requiredTemplateTags,
   validateTemplateTags,
   validateTemplateUploadFile,
 } from "../lib/template-management";
@@ -95,6 +96,15 @@ describe("template management helpers", () => {
     expect(result.totalTagsFound).toBe(4);
     expect(result.unknownTags).toEqual(["d.unknownTag"]);
     expect(result.missingRequiredTags).toContain("d.items[i].description");
+  });
+
+  test("recognizes category payload tags without making them required", () => {
+    const withoutCategoryTags = validateTemplateTags([...requiredTemplateTags]);
+    const withCategoryTags = validateTemplateTags([...requiredTemplateTags, "d.categoryCode", "d.categoryName"]);
+
+    expect(withoutCategoryTags.missingRequiredTags).toEqual([]);
+    expect(withCategoryTags.missingRequiredTags).toEqual([]);
+    expect(withCategoryTags.unknownTags).toEqual([]);
   });
 
   test("validates Carbone tags with formatter chains by their base data path", () => {

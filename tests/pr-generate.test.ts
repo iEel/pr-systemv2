@@ -175,6 +175,8 @@ describe("purchase request generation helpers", () => {
     );
 
     expect(payload).toMatchObject({
+      categoryCode: "",
+      categoryName: "",
       purposeNewMark: "",
       purposeRenewalMark: "",
       purposeRepairMark: "X",
