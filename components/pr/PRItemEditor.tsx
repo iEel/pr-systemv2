@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { inputClass } from "@/components/ui/Field";
 import { TableWrap, tableCellClass, tableHeaderClass } from "@/components/ui/Table";
-import type { DraftLineItemRowType } from "@/lib/pr-draft";
+import type { DraftLineItemRowType } from "@/lib/pr-money";
 import { calculatePRItemEditorTotals, type PRItemEditorTotals } from "@/lib/pr-item-editor-totals";
 import { formatAmount } from "@/lib/utils";
 

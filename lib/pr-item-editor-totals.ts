@@ -3,7 +3,7 @@ import {
   calculateDraftTotals,
   type DraftLineItem,
   type DraftLineItemRowType,
-} from "./pr-draft";
+} from "./pr-money";
 
 export type PRItemEditorTotals = Pick<ReturnType<typeof calculateDraftTotals>, "subtotal" | "vatAmount" | "totalAmount">;
 

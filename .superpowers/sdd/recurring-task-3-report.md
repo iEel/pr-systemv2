@@ -45,3 +45,13 @@ RED evidence: `npm test -- tests/recurring-pr.test.ts tests/pr-item-editor-copy.
 GREEN evidence: `npm test -- tests/recurring-pr.test.ts tests/pr-item-editor-copy.test.ts tests/pr-form-workflow-copy.test.ts tests/pr-draft.test.ts` exited 0 with 4 files and 40 tests passed. Final `npm test`, `npm run typecheck`, and `git diff --check` exited 0; the full suite passed with 59 files and 316 tests.
 
 Follow-up commit: `Fix recurring validation and editor totals rounding`.
+
+## P1 Client Boundary Remediation
+
+Moved the shared draft line-item types and money primitives into dependency-free `lib/pr-money.ts`. `pr-draft.ts` re-exports the existing public types and total functions, preserving callers and rounding behavior. The client editor and `pr-item-editor-totals.ts` now import only this browser-safe module, with no Prisma, Auth, budget, or server draft-service path in their import graph.
+
+RED evidence: `npm run build` exited 1 with Turbopack module-resolution errors for `dgram`, `dns`, `net`, and `tls`. The trace was `PRItemEditor -> pr-item-editor-totals -> pr-draft -> prisma/current-user`. The new source-boundary regression also failed while the editor/helper still referenced `pr-draft`.
+
+GREEN evidence: `npm test -- tests/pr-item-editor-copy.test.ts tests/pr-draft.test.ts tests/recurring-pr.test.ts` exited 0 with 3 files and 35 tests passed. Final `npm test`, `npm run typecheck`, `npm run build`, and `git diff --check` exited 0; the full suite passed with 59 files and 317 tests, and the production build completed successfully.
+
+Follow-up commit: `Move PR totals to client-safe money module`.

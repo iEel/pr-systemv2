@@ -2,19 +2,16 @@ import { prisma } from "./prisma";
 import { requirePermission } from "./auth/current-user";
 import { buildBudgetReference, reserveDraftBudget, updateDraftBudgetReservation } from "./budget-tracking";
 import { buildDefaultDraftItems } from "./pr-form-defaults";
+import {
+  calculateDraftLineTotal,
+  calculateDraftTotals,
+  type DraftLineItem,
+  type DraftLineItemRowType,
+  type DraftTotals,
+} from "./pr-money";
 
 export { buildDefaultDraftItems, buildDefaultDraftRemark, type DraftDefaultLineItem } from "./pr-form-defaults";
-
-export type DraftLineItemRowType = "ITEM" | "HEADING" | "DETAIL";
-
-export type DraftLineItem = {
-  rowType?: DraftLineItemRowType;
-  accountCode: string;
-  description: string;
-  quantity: number;
-  unitCost: number;
-  totalAmount: number;
-};
+export { calculateDraftLineTotal, calculateDraftTotals, type DraftLineItem, type DraftLineItemRowType, type DraftTotals } from "./pr-money";
 
 export type DraftPurchaseRequestInput = {
   branchId: string;
@@ -27,13 +24,6 @@ export type DraftPurchaseRequestInput = {
   purchaseMethod: string;
   remark: string | null;
   items: DraftLineItem[];
-};
-
-export type DraftTotals = {
-  subtotal: number;
-  vatRate: number;
-  vatAmount: number;
-  totalAmount: number;
 };
 
 export type DraftFormOptions = Awaited<ReturnType<typeof getDraftFormOptions>>;
@@ -123,14 +113,6 @@ function parseAmount(value: string) {
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
-function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
-export function calculateDraftLineTotal(quantity: number, unitCost: number) {
-  return roundMoney(quantity * unitCost);
-}
-
 function isInputDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime());
 }
@@ -166,19 +148,6 @@ export function selectDefaultDepartmentAndDivision(departments: DepartmentOption
   return {
     defaultDepartmentId: defaultDepartment?.id || "",
     defaultDivisionId: defaultDivision?.id || "",
-  };
-}
-
-export function calculateDraftTotals(items: DraftLineItem[]): DraftTotals {
-  const subtotal = roundMoney(items.reduce((sum, item) => sum + (isPricedItem(item) ? item.totalAmount : 0), 0));
-  const vatRate = 7;
-  const vatAmount = roundMoney(subtotal * (vatRate / 100));
-
-  return {
-    subtotal,
-    vatRate,
-    vatAmount,
-    totalAmount: roundMoney(subtotal + vatAmount),
   };
 }
 
