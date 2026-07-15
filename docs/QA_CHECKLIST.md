@@ -166,7 +166,7 @@ Mobile:
 - PR Detail status values use semantic badges instead of plain text.
 - Category labels appear in list, Board, and PR Detail; legacy null category labels read `Not categorized`.
 - Category filter, category summary, and PR Detail category values use the same result set.
-- XLSX export preserves the category filter and includes Category Code and Category Name in PR Detail.
+- XLSX export preserves the category filter, uses one Category column in PR Detail, and includes a By Category sheet.
 
 ## Draft Preview Checks
 
@@ -285,7 +285,7 @@ Mobile:
 - Reports summary cards match the table totals for the selected filters.
 - `Export XLSX` preserves the current filters.
 - `/reports/export` returns `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` with attachment disposition.
-- Exported workbook includes Summary, By Month, By Company, By Status, and PR Detail sheets.
+- Exported workbook includes Summary, By Month, By Company, By Status, By Category, and PR Detail sheets.
 - Exported workbook Summary includes a `Budget Warning` row when Budget Master is missing for the selected report view.
 - Thai/English mixed text opens correctly in Excel.
 

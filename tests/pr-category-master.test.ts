@@ -16,9 +16,11 @@ vi.mock("../lib/prisma", () => ({
 }));
 
 import {
+  buildPrCategoryHref,
   mapPrCategoryRecordToRow,
   normalizePrCategoryFilters,
   parsePrCategoryInput,
+  readPrCategoryRedirectFilters,
   updatePrCategoryFromFormData,
   validateCategoryCodeMutation,
 } from "../lib/pr-category-master";
@@ -37,6 +39,14 @@ describe("PR category master", () => {
       name: "Software",
       sortOrder: 20,
     });
+  });
+
+  test("preserves category filters after a category mutation", () => {
+    const formData = new FormData();
+    formData.set("includeInactive", "1");
+    formData.set("redirectQ", "other");
+
+    expect(buildPrCategoryHref(readPrCategoryRedirectFilters(formData))).toBe("/masters/pr-categories?q=other&includeInactive=1");
   });
 
   test("locks a referenced category code", () => {

@@ -7,26 +7,24 @@ import { Button } from "@/components/ui/Button";
 import { Card, SectionHeader } from "@/components/ui/Card";
 import { inputClass } from "@/components/ui/Field";
 import { TableWrap, tableCellClass, tableHeaderClass } from "@/components/ui/Table";
-import { getPrCategoryPageData, type PrCategoryFilters, type PrCategoryRow } from "@/lib/pr-category-master";
+import { buildPrCategoryHref, getPrCategoryPageData, type PrCategoryFilters, type PrCategoryRow } from "@/lib/pr-category-master";
 import { createPrCategoryAction, setPrCategoryActiveAction, updatePrCategoryAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-function categoryHref(filters: Partial<PrCategoryFilters> = {}) {
-  const params = new URLSearchParams();
-
-  if (filters.q) params.set("q", filters.q);
-  if (filters.includeInactive) params.set("includeInactive", "1");
-
-  const query = params.toString();
-
-  return `/masters/pr-categories${query ? `?${query}` : ""}`;
-}
-
 function formatUpdatedAt(value: string) {
   return new Intl.DateTimeFormat("th-TH", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function redirectInputs(filters: PrCategoryFilters) {
+  return (
+    <>
+      <input name="redirectQ" type="hidden" value={filters.q} />
+      <input name="includeInactive" type="hidden" value={filters.includeInactive ? "1" : "0"} />
+    </>
+  );
 }
 
 function filterForm({ filters }: { filters: PrCategoryFilters }) {
@@ -52,10 +50,11 @@ function filterForm({ filters }: { filters: PrCategoryFilters }) {
   );
 }
 
-function createCategoryForm() {
+function createCategoryForm({ filters }: { filters: PrCategoryFilters }) {
   return (
     <Card className="border-blue-200 bg-white shadow-none">
       <form action={createPrCategoryAction} className="grid gap-4">
+        {redirectInputs(filters)}
         <div>
           <h2 className="text-lg font-bold text-ink">Create Category</h2>
           <p className="mt-1 text-sm leading-6 text-muted">เพิ่มหมวดหมู่สำหรับ Purchase Request โดยใช้ code ที่อ่านง่ายและเรียงลำดับสำหรับผู้ใช้งาน</p>
@@ -88,13 +87,14 @@ function createCategoryForm() {
   );
 }
 
-function categoryRow({ row }: { row: PrCategoryRow }) {
+function categoryRow({ filters, row }: { filters: PrCategoryFilters; row: PrCategoryRow }) {
   const formId = `category-edit-${row.id}`;
 
   return (
     <tr className="align-top hover:bg-slate-50" key={row.id}>
       <td className={`${tableCellClass} min-w-[20rem]`}>
         <form action={updatePrCategoryAction} className="grid gap-2" id={formId}>
+          {redirectInputs(filters)}
           <input name="categoryId" type="hidden" value={row.id} />
           <label className="grid gap-1 text-xs font-bold text-ink">
             Code
@@ -131,6 +131,7 @@ function categoryRow({ row }: { row: PrCategoryRow }) {
           </Button>
           {row.isActive ? (
             <form action={setPrCategoryActiveAction.bind(null, false)} className="grid gap-2">
+              {redirectInputs(filters)}
               <input name="categoryId" type="hidden" value={row.id} />
               <Button className="min-h-9 px-3" type="submit" variant="danger">
                 <Power aria-hidden className="h-4 w-4" />Deactivate
@@ -139,6 +140,7 @@ function categoryRow({ row }: { row: PrCategoryRow }) {
             </form>
           ) : (
             <form action={setPrCategoryActiveAction.bind(null, true)} className="grid gap-2">
+              {redirectInputs(filters)}
               <input name="categoryId" type="hidden" value={row.id} />
               <Button className="min-h-9 px-3" type="submit" variant="success">
                 <RotateCcw aria-hidden className="h-4 w-4" />Activate
@@ -152,7 +154,7 @@ function categoryRow({ row }: { row: PrCategoryRow }) {
   );
 }
 
-function categoryTable({ rows }: { rows: PrCategoryRow[] }) {
+function categoryTable({ filters, rows }: { filters: PrCategoryFilters; rows: PrCategoryRow[] }) {
   return (
     <TableWrap>
       <div className="overflow-x-auto">
@@ -174,7 +176,7 @@ function categoryTable({ rows }: { rows: PrCategoryRow[] }) {
                 </td>
               </tr>
             ) : (
-              rows.map((row) => categoryRow({ row }))
+              rows.map((row) => categoryRow({ filters, row }))
             )}
           </tbody>
         </table>
@@ -198,15 +200,15 @@ export default async function PrCategoriesPage({
           title="PR Categories"
           description="จัดการหมวดหมู่ Purchase Request สำหรับการเลือกใช้งานอย่างสม่ำเสมอ โดยเก็บประวัติ PR เดิมไว้ครบถ้วน"
           action={
-            <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90" href={categoryHref({ ...filters, includeInactive: true })}>
+            <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90" href={buildPrCategoryHref({ ...filters, includeInactive: true })}>
               Show active + inactive
             </Link>
           }
         />
         <MasterDataNav />
         {filterForm({ filters })}
-        {createCategoryForm()}
-        {categoryTable({ rows })}
+        {createCategoryForm({ filters })}
+        {categoryTable({ filters, rows })}
       </div>
     </AppFrame>
   );

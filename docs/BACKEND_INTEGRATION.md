@@ -355,9 +355,9 @@ Exact routing can use API routes or server actions. The important part is the co
   - Cancelled and reissued PRs remain visible in reports but do not count as used or pending budget.
 - When `Used + Pending > 0` and active Budget Master total is zero for the selected view, Reports must show the no-budget warning and suppress misleading Remaining Budget confidence in the UI.
 - XLSX export returns `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
-- Workbook sheets are `Summary`, `By Month`, `By Company`, `By Status`, and `PR Detail`.
+- Workbook sheets are `Summary`, `By Month`, `By Company`, `By Status`, `By Category`, and `PR Detail`.
 - The Summary sheet includes `Budget Warning` when the active Budget Master context is missing.
-- Reports expose category filtering, a category summary, and category labels in PR detail. XLSX PR Detail exports `Category Code` and `Category Name`; legacy null relations remain exportable as `Not categorized`.
+- Reports expose category filtering, a category summary, and category labels in PR detail. XLSX PR Detail exports one `Category` column, and the `By Category` sheet provides category totals; legacy null relations remain exportable as `Not categorized`.
 
 ### PDF Visual QA
 

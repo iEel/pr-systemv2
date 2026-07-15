@@ -190,9 +190,9 @@ Last updated: 2026-07-15
 - Reports show a strict no-budget warning with a Budget Master link when PR used/pending amounts exist but no active Budget Master row matches the current filters.
 - Summary tables use lightweight mini bars for scanability, and PR detail status values use the same status badge language as the rest of the app.
 - `/reports/export` downloads the same filtered report as an `.xlsx` workbook.
-- XLSX workbook contains Summary, By Month, By Company, By Status, and PR Detail sheets.
+- XLSX workbook contains Summary, By Month, By Company, By Status, By Category, and PR Detail sheets.
 - XLSX Summary includes a `Budget Warning` row when Remaining Budget is not reliable because Budget Master is missing for the view.
-- XLSX PR Detail includes Category Code and Category Name columns; uncategorized legacy rows remain exportable.
+- XLSX PR Detail includes one Category column, and the By Category sheet provides category totals; uncategorized legacy rows remain exportable.
 - Soft Budget tracking updates Budget Master through the PR lifecycle without blocking users: draft totals reserve budget, Issue PR moves reserved to used, Cancel reverses used, and Reissue reserves the replacement draft when a matching active budget exists.
 - Missing or insufficient budget is captured as audit warning metadata instead of stopping PR creation or issuance.
 

@@ -112,6 +112,24 @@ export function normalizePrCategoryFilters(params: SearchParams | undefined): Pr
   };
 }
 
+export function buildPrCategoryHref(filters: Partial<PrCategoryFilters> = {}) {
+  const params = new URLSearchParams();
+
+  if (filters.q) params.set("q", filters.q);
+  if (filters.includeInactive) params.set("includeInactive", "1");
+
+  const query = params.toString();
+
+  return `/masters/pr-categories${query ? `?${query}` : ""}`;
+}
+
+export function readPrCategoryRedirectFilters(formData: FormData) {
+  return normalizePrCategoryFilters({
+    includeInactive: formData.get("includeInactive") === "1" ? "1" : undefined,
+    q: String(formData.get("redirectQ") || ""),
+  });
+}
+
 export function parsePrCategoryInput(values: Partial<Record<string, unknown>>): PrCategoryInput {
   const code = String(values.code || "")
     .trim()

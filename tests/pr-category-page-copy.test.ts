@@ -13,4 +13,18 @@ describe("PR category admin page", () => {
     expect(nav).toContain("/masters/companies");
     expect(nav).toContain("/masters/pr-categories");
   });
+
+  test("preserves active category filters in category mutation forms", () => {
+    const page = readFileSync("app/masters/pr-categories/page.tsx", "utf8");
+
+    expect(page).toContain('name="redirectQ" type="hidden" value={filters.q}');
+    expect(page).toContain('name="includeInactive" type="hidden" value={filters.includeInactive ? "1" : "0"}');
+  });
+
+  test("labels the PR category route correctly in the topbar breadcrumb", () => {
+    const breadcrumbs = readFileSync("components/app/Breadcrumbs.tsx", "utf8");
+
+    expect(breadcrumbs).toContain('"pr-categories": "PR Categories"');
+    expect(breadcrumbs).toContain('labels[segment] ?? (segment.startsWith("pr-") ? "PR Detail" : segment)');
+  });
 });
