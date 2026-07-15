@@ -24,6 +24,8 @@ describe("category deactivation confirmations", () => {
     ["production", { NODE_ENV: "production" }],
     ["missing", {}],
     ["blank", { AUTH_SECRET: "   ", CATEGORY_DEACTIVATION_CONFIRMATION_SECRET: "" }],
+    ["public placeholders", { AUTH_SECRET: "CHANGE_ME_GENERATE_A_LONG_RANDOM_SECRET", CATEGORY_DEACTIVATION_CONFIRMATION_SECRET: "change_me" }],
+    ["whitespace and mixed-case placeholders", { AUTH_SECRET: "  Change_Me_Generate_A_Long_Random_Secret ", CATEGORY_DEACTIVATION_CONFIRMATION_SECRET: " CHANGE_ME " }],
   ])("fails closed when the %s environment has no configured signing secret", (_label, env) => {
     const confirmations = createCategoryDeactivationConfirmationService({
       getSecret: () => resolveCategoryDeactivationConfirmationSecret(env),

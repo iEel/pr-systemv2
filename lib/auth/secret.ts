@@ -3,7 +3,7 @@ type SecretEnvironment = Record<string, string | undefined>;
 export function readConfiguredSecret(value: string | undefined) {
   const secret = value?.trim();
 
-  return secret || undefined;
+  return secret && !/^CHANGE_ME(?:_|$)/i.test(secret) ? secret : undefined;
 }
 
 export function requireAuthSecret(environment: SecretEnvironment = process.env) {
