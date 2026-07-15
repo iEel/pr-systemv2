@@ -14,9 +14,32 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function expectCatalogGuard(migration: string, catalog: string, name: string) {
+function expectCatalogGuard(
+  migration: string,
+  catalog: string,
+  name: string,
+  table: string,
+  objectIdColumn: "object_id" | "parent_object_id",
+) {
   expect(migration).toMatch(
-    new RegExp(`IF NOT EXISTS \\(\\s*SELECT 1 FROM ${catalog} WHERE \\[name\\] = N'${escapeRegExp(name)}'`, "i"),
+    new RegExp(
+      `IF NOT EXISTS \\(\\s*SELECT 1 FROM ${catalog} WHERE \\[name\\] = N'${escapeRegExp(name)}' AND \\[${objectIdColumn}\\] = OBJECT_ID\\(N'dbo\\.${escapeRegExp(table)}'\\)`,
+      "i",
+    ),
+  );
+}
+
+function modelBlock(schema: string, model: string) {
+  const match = schema.match(new RegExp(`model\\s+${escapeRegExp(model)}\\s+\\{([\\s\\S]*?)\\n\\}`, "m"));
+
+  expect(match, `Expected ${model} model`).not.toBeNull();
+
+  return match![1];
+}
+
+function nullableSetNullRelationPattern(field: string, relationName: string, foreignKey: string) {
+  return new RegExp(
+    `${field}\\s+PurchaseRequest\\?\\s+@relation\\(\\s*"${relationName}"\\s*,\\s*fields:\\s*\\[${foreignKey}\\]\\s*,\\s*references:\\s*\\[id\\]\\s*,\\s*onDelete:\\s*SetNull\\s*,\\s*onUpdate:\\s*NoAction\\s*\\)`,
   );
 }
 
@@ -83,51 +106,82 @@ describe("annual recurring PR schema", () => {
     }
   });
 
-  test("keeps migration creation idempotent and Prisma SetNull relations nullable", () => {
-    const { schema, migration } = readSchemaContract();
+  test("keeps migration creation idempotent", () => {
+    const { migration } = readSchemaContract();
     const tables = [
       "RecurringPurchaseRequestSchedule",
       "RecurringPurchaseRequestScheduleItem",
       "RecurringPurchaseRequestRun",
     ];
-    const checkConstraintNames = [
-      "RecurringSchedule_status_check",
-      "RecurringSchedule_renewalMonth_check",
-      "RecurringSchedule_renewalDay_check",
-      "RecurringSchedule_leadDays_check",
-      "RecurringScheduleItem_rowType_check",
-      "RecurringPurchaseRequestRun_status_check",
+    const checkConstraints = [
+      ["RecurringSchedule_status_check", "RecurringPurchaseRequestSchedule"],
+      ["RecurringSchedule_renewalMonth_check", "RecurringPurchaseRequestSchedule"],
+      ["RecurringSchedule_renewalDay_check", "RecurringPurchaseRequestSchedule"],
+      ["RecurringSchedule_leadDays_check", "RecurringPurchaseRequestSchedule"],
+      ["RecurringScheduleItem_rowType_check", "RecurringPurchaseRequestScheduleItem"],
+      ["RecurringPurchaseRequestRun_status_check", "RecurringPurchaseRequestRun"],
     ];
-    const indexNames = [
-      "RecurringPurchaseRequestSchedule_status_nextRunDate_idx",
-      "RecurringPurchaseRequestSchedule_responsibleUserId_idx",
-      "RecurringPurchaseRequestRun_purchaseRequestId_key",
-      "RecurringPurchaseRequestRun_status_startedAt_idx",
+    const indexes = [
+      ["RecurringPurchaseRequestSchedule_status_nextRunDate_idx", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestSchedule_responsibleUserId_idx", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestRun_purchaseRequestId_key", "RecurringPurchaseRequestRun"],
+      ["RecurringPurchaseRequestRun_status_startedAt_idx", "RecurringPurchaseRequestRun"],
     ];
-    const foreignKeyNames = [
-      "RecurringPurchaseRequestSchedule_sourcePurchaseRequestId_fkey",
-      "RecurringPurchaseRequestSchedule_companyId_fkey",
-      "RecurringPurchaseRequestSchedule_branchId_fkey",
-      "RecurringPurchaseRequestSchedule_departmentId_fkey",
-      "RecurringPurchaseRequestSchedule_divisionId_fkey",
-      "RecurringPurchaseRequestSchedule_categoryId_fkey",
-      "RecurringPurchaseRequestSchedule_responsibleUserId_fkey",
-      "RecurringPurchaseRequestSchedule_createdById_fkey",
-      "RecurringPurchaseRequestScheduleItem_scheduleId_fkey",
-      "RecurringPurchaseRequestRun_scheduleId_fkey",
-      "RecurringPurchaseRequestRun_purchaseRequestId_fkey",
+    const foreignKeys = [
+      ["RecurringPurchaseRequestSchedule_sourcePurchaseRequestId_fkey", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestSchedule_companyId_fkey", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestSchedule_branchId_fkey", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestSchedule_departmentId_fkey", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestSchedule_divisionId_fkey", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestSchedule_categoryId_fkey", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestSchedule_responsibleUserId_fkey", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestSchedule_createdById_fkey", "RecurringPurchaseRequestSchedule"],
+      ["RecurringPurchaseRequestScheduleItem_scheduleId_fkey", "RecurringPurchaseRequestScheduleItem"],
+      ["RecurringPurchaseRequestRun_scheduleId_fkey", "RecurringPurchaseRequestRun"],
+      ["RecurringPurchaseRequestRun_purchaseRequestId_fkey", "RecurringPurchaseRequestRun"],
     ];
 
     for (const table of tables) {
       expect(migration).toContain(`IF OBJECT_ID(N'[dbo].[${table}]', N'U') IS NULL BEGIN CREATE TABLE [dbo].[${table}]`);
     }
-    for (const name of checkConstraintNames) expectCatalogGuard(migration, "sys\\.check_constraints", name);
-    for (const name of indexNames) expectCatalogGuard(migration, "sys\\.indexes", name);
-    for (const name of foreignKeyNames) expectCatalogGuard(migration, "sys\\.foreign_keys", name);
+    for (const [name, table] of checkConstraints) {
+      expectCatalogGuard(migration, "sys\\.check_constraints", name, table, "parent_object_id");
+    }
+    for (const [name, table] of indexes) expectCatalogGuard(migration, "sys\\.indexes", name, table, "object_id");
+    for (const [name, table] of foreignKeys) {
+      expectCatalogGuard(migration, "sys\\.foreign_keys", name, table, "parent_object_id");
+    }
+  });
 
-    expect(schema).toMatch(/sourcePurchaseRequestId\s+String\?/);
-    expect(schema).toMatch(/sourcePurchaseRequest\s+PurchaseRequest\?\s+@relation\("RecurringScheduleSource",[\s\S]*?onDelete:\s+SetNull/);
-    expect(schema).toMatch(/purchaseRequestId\s+String\?\s+@unique/);
-    expect(schema).toMatch(/purchaseRequest\s+PurchaseRequest\?\s+@relation\("RecurringRunDraft",[\s\S]*?onDelete:\s+SetNull/);
+  test("requires SetNull on the nullable source PR relation in the schedule model", () => {
+    const { schema } = readSchemaContract();
+    const schedule = modelBlock(schema, "RecurringPurchaseRequestSchedule");
+    const sourceRelation = nullableSetNullRelationPattern(
+      "sourcePurchaseRequest",
+      "RecurringScheduleSource",
+      "sourcePurchaseRequestId",
+    );
+
+    expect(schedule).toMatch(/sourcePurchaseRequestId\s+String\?/);
+    expect(schedule).toMatch(sourceRelation);
+
+    const withoutSetNull = schedule.replace("onDelete: SetNull", "onDelete: NoAction");
+    expect(withoutSetNull).not.toMatch(sourceRelation);
+  });
+
+  test("requires SetNull on the nullable generated PR relation in the run model", () => {
+    const { schema } = readSchemaContract();
+    const run = modelBlock(schema, "RecurringPurchaseRequestRun");
+    const generatedRelation = nullableSetNullRelationPattern(
+      "purchaseRequest",
+      "RecurringRunDraft",
+      "purchaseRequestId",
+    );
+
+    expect(run).toMatch(/purchaseRequestId\s+String\?\s+@unique/);
+    expect(run).toMatch(generatedRelation);
+
+    const withoutSetNull = run.replace("onDelete: SetNull", "onDelete: NoAction");
+    expect(withoutSetNull).not.toMatch(generatedRelation);
   });
 });
