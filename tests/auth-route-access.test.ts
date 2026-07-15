@@ -22,6 +22,7 @@ describe("auth route access", () => {
     expect(requiredPermissionForPath("/settings/running-numbers")).toBe("RUNNING_NUMBER_MANAGE");
     expect(requiredPermissionForPath("/masters/budgets")).toBe("BUDGET_MANAGE");
     expect(requiredPermissionForPath("/masters/companies")).toBe("MASTER_DATA_MANAGE");
+    expect(requiredPermissionForPath("/masters/pr-categories")).toBe("MASTER_DATA_MANAGE");
     expect(requiredPermissionForPath("/templates")).toBe("TEMPLATE_MANAGE");
     expect(requiredPermissionForPath("/audit-logs/export")).toBe("AUDIT_VIEW");
     expect(requiredPermissionForPath("/dashboard")).toBeNull();
@@ -31,6 +32,7 @@ describe("auth route access", () => {
     expect(canRoleAccessPath("ADMIN", "/settings/users")).toBe(true);
     expect(canRoleAccessPath("IT_ADMIN", "/settings/users")).toBe(true);
     expect(canRoleAccessPath("IT_USER", "/settings/users")).toBe(false);
+    expect(canRoleAccessPath("IT_USER", "/masters/pr-categories")).toBe(false);
     expect(canRoleAccessPath("VIEWER", "/dashboard")).toBe(true);
   });
 

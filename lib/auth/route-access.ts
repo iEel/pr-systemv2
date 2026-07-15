@@ -8,6 +8,7 @@ const permissionRoutes: Array<{ permission: Permission; prefix: string }> = [
   { permission: "USER_MANAGE", prefix: "/settings/users" },
   { permission: "RUNNING_NUMBER_MANAGE", prefix: "/settings/running-numbers" },
   { permission: "BUDGET_MANAGE", prefix: "/masters/budgets" },
+  { permission: "MASTER_DATA_MANAGE", prefix: "/masters/pr-categories" },
   { permission: "MASTER_DATA_MANAGE", prefix: "/masters/companies" },
   { permission: "TEMPLATE_MANAGE", prefix: "/templates" },
   { permission: "AUDIT_VIEW", prefix: "/audit-logs" },

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { Building2, FileImage, Plus, Save, Settings2, Trash2, Upload, X } from "lucide-react";
 import { AppFrame } from "@/components/app/AppFrame";
+import { MasterDataNav } from "@/components/masters/MasterDataNav";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, SectionHeader } from "@/components/ui/Card";
@@ -459,6 +460,8 @@ export default async function CompaniesPage({
             </Link>
           }
         />
+
+        <MasterDataNav />
 
         {isCreating ? addCompanyForm({ includeInactive }) : null}
 
