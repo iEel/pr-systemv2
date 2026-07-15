@@ -5,17 +5,22 @@
 - Added the private `npm run recurring-pr:process` command using the local runtime `./node_modules/.bin/tsx`.
 - Hardened the cron-safe worker CLI: dotenv, Prisma, and worker imports now occur inside guarded runtime initialization; worker and disconnect failures emit exactly one safe JSON result; exit codes are `0` for success, `2` for per-schedule failures, and `1` for initialization, worker, or cleanup failures.
 - Added subprocess coverage using a test-only dependency fixture for success, partial failure, initialization rejection, worker rejection, and disconnect rejection. Each case asserts the exit code, a single stdout JSON line, empty stderr, and no secret leakage.
+- Restored the cross-platform package command `tsx scripts/process-recurring-pr.ts` and added a subprocess test that runs it through npm's platform-specific shim while preserving the JSON/exit-code contract.
+- Refactored dependency initialization to retain Prisma before loading the worker module; an explicit partial-initialization fixture proves cleanup is attempted once when worker initialization rejects.
 - Documented a system-wide `/usr/local/bin/node` runtime, explicit cron-like `PATH`, the matching absolute local `tsx` executable in cron/manual commands, a persistent app-owned `/var/lib/it-pr-dms/locks/recurring-pr.lock`, minimal-environment smoke check, and lock-concurrency check. The worker has no public nginx route.
 
 ## TDD Evidence
 
 1. RED: `npm test -- tests/recurring-pr-cli-copy.test.ts` exited `1` before the review fix. The direct `tsx` subprocess could not execute the top-level-await CommonJS entrypoint, and the CLI had no dependency seam or direct-runtime/persistent-lock documentation.
 2. GREEN: `npm test -- tests/recurring-pr-cli-copy.test.ts tests/phase5-hardening-docs.test.ts` exited `0` with 2 test files and 10 tests passing after the guarded lifecycle, fixture seam, and operational documentation were added.
+3. RED (second review): `npm test -- tests/recurring-pr-cli-copy.test.ts` exited `1` with the old Unix-style package script, old fixture contract, and no retained Prisma cleanup after later worker initialization failure.
+4. GREEN (second review): `npm test -- tests/recurring-pr-cli-copy.test.ts` exited `0` with 1 test file and 8 tests passing, including the npm package-command and partial-initialization cleanup subprocess cases.
 
 ## Verification Evidence
 
 - `npm test -- tests/recurring-pr-cli-copy.test.ts tests/phase5-hardening-docs.test.ts`: exit `0`; 2 test files and 10 tests passed.
 - `npm test`: exit `0`; 69 test files and 392 tests passed.
+- `npm test`: exit `0`; 69 test files and 394 tests passed after the second review fix.
 - `npm run typecheck`: exit `0`.
 - `npx prisma validate`: exit `0`; Prisma schema valid.
 - `npm run build`: exit `0`; production build completed.

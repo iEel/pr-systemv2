@@ -4,8 +4,15 @@ type RecurringPrSummary = {
 };
 
 type RecurringPrCliDependencies = {
-  prisma: { $disconnect(): Promise<void> };
+  prisma: RecurringPrPrisma;
   processRecurringPrSchedules(): Promise<RecurringPrSummary>;
+};
+
+type RecurringPrPrisma = { $disconnect(): Promise<void> };
+
+type RecurringPrCliDependencyLoader = {
+  loadPrisma(): Promise<RecurringPrPrisma>;
+  loadWorker(): Promise<Pick<RecurringPrCliDependencies, "processRecurringPrSchedules">>;
 };
 
 let resultWritten = false;
@@ -16,34 +23,38 @@ function writeResult(result: object) {
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
-async function loadDependencies(): Promise<RecurringPrCliDependencies> {
+async function loadDependencyLoader(): Promise<RecurringPrCliDependencyLoader> {
   await import("dotenv/config");
   const testModule = process.env.NODE_ENV === "test" ? process.env.RECURRING_PR_CLI_DEPENDENCIES_MODULE : undefined;
   if (testModule) {
-    const fixture = await import(testModule) as { recurringPrCliDependencies: RecurringPrCliDependencies };
-    return fixture.recurringPrCliDependencies;
+    const fixture = await import(testModule) as { recurringPrCliDependencyLoader: RecurringPrCliDependencyLoader };
+    return fixture.recurringPrCliDependencyLoader;
   }
-  const [{ prisma }, { processRecurringPrSchedules }] = await Promise.all([
-    import("../lib/prisma"),
-    import("../lib/recurring-pr-worker"),
-  ]);
-  return { prisma, processRecurringPrSchedules };
+  return {
+    loadPrisma: async () => (await import("../lib/prisma")).prisma,
+    loadWorker: async () => {
+      const { processRecurringPrSchedules } = await import("../lib/recurring-pr-worker");
+      return { processRecurringPrSchedules };
+    },
+  };
 }
 
 async function main() {
-  let dependencies: RecurringPrCliDependencies | undefined;
+  let prisma: RecurringPrPrisma | undefined;
   let disconnectAttempted = false;
   try {
-    dependencies = await loadDependencies();
-    const summary = await dependencies.processRecurringPrSchedules();
+    const loader = await loadDependencyLoader();
+    prisma = await loader.loadPrisma();
+    const { processRecurringPrSchedules } = await loader.loadWorker();
+    const summary = await processRecurringPrSchedules();
     disconnectAttempted = true;
-    await dependencies.prisma.$disconnect();
+    await prisma.$disconnect();
     writeResult({ ok: summary.failed === 0, ...summary });
     process.exitCode = summary.failed > 0 ? 2 : 0;
   } catch {
-    if (dependencies && !disconnectAttempted) {
+    if (prisma && !disconnectAttempted) {
       try {
-        await dependencies.prisma.$disconnect();
+        await prisma.$disconnect();
       } catch {
         // The safe result below deliberately does not expose cleanup failures.
       }
