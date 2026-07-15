@@ -81,3 +81,30 @@ Results:
 - Full suite passed: 56 files, 293 tests. Node emitted TLS ServerName deprecation warnings, but Vitest completed successfully.
 - TypeScript typecheck passed.
 - Diff check passed.
+
+## P2 Relation Assertion Scope Follow-up
+
+Fix commit: `f2c2eaf742709d18c719035befa18587dbe254b3` - `Scope recurring Prisma relation assertions`
+
+The Prisma checks now extract the exact `RecurringPurchaseRequestSchedule` and `RecurringPurchaseRequestRun` model blocks and require each relation's full `@relation(...)` signature through its closing parenthesis. Catalog guard assertions now include each expected table's `parent_object_id` or `object_id` predicate.
+
+### Equivalent Mutation Evidence
+
+The source and generated-run checks each make an in-memory copy of their own model block, change only that block's `onDelete: SetNull` to `onDelete: NoAction`, and assert that the corresponding full relation signature no longer matches. This independently proves both removals are detected without modifying the production Prisma schema or migration.
+
+### Verification Evidence
+
+```powershell
+npm test -- tests/recurring-pr-schema.test.ts tests/auth-permissions.test.ts tests/auth-route-access.test.ts
+npx prisma validate
+npm run prisma:generate
+npm run typecheck
+git diff --check
+```
+
+Results:
+
+- Focused suite passed: 3 files, 14 tests.
+- Prisma schema validation and client generation passed.
+- TypeScript typecheck passed.
+- Diff check passed.
