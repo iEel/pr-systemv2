@@ -28,3 +28,4 @@ storage/company-assets/*
 storage/generated-test.pdf
 
 .superpowers/
+.worktrees/
