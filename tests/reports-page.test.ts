@@ -55,4 +55,13 @@ describe("reports page", () => {
     expect(source).toContain("tabular-nums");
     expect(source).not.toContain('ReportTable columns={["Company", "Branch", "PR Count", "Total Amount", "Used", "Latest Date"]}');
   });
+
+  test("supports category filters and category summaries without breaking table spans", () => {
+    const source = readFileSync("app/reports/page.tsx", "utf8");
+
+    expect(source).toContain('name="categoryId"');
+    expect(source).toContain("Category Summary");
+    expect(source).toContain("categorySummary");
+    expect(source).toContain("colSpan={9}");
+  });
 });

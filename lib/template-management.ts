@@ -379,6 +379,7 @@ export function buildTemplatePreviewPayload() {
       },
       department: { name: "IT" },
       division: { name: "IT" },
+      category: null,
       createdBy: { displayName: "Admin User" },
       items: [
         {

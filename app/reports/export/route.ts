@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 function readFilters(searchParams: URLSearchParams) {
   return {
+    categoryId: searchParams.get("categoryId") || "",
     companyId: searchParams.get("companyId") || "",
     month: searchParams.get("month") || "",
     status: searchParams.get("status") || "",

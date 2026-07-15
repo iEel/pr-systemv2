@@ -63,6 +63,7 @@ describe("purchase request generation helpers", () => {
         },
         department: { name: "IT Operation" },
         division: null,
+        category: { code: "HARDWARE", name: "Hardware & Equipment" },
         createdBy: { displayName: "Admin User" },
         items: [
           {
@@ -92,6 +93,8 @@ describe("purchase request generation helpers", () => {
       companyFooterImage: "",
       department: "IT Operation",
       division: "-",
+      categoryCode: "HARDWARE",
+      categoryName: "Hardware & Equipment",
       subtotal: 2469,
       subtotalFormatted: "2,469.00",
       vatRate: 7,
@@ -164,6 +167,7 @@ describe("purchase request generation helpers", () => {
         branch: { name: "Grandlink", code: "GL", address: null },
         department: { name: "IT" },
         division: { name: "IT" },
+        category: null,
         createdBy: { displayName: "Admin User" },
         items: [],
       },
@@ -199,6 +203,7 @@ describe("purchase request generation helpers", () => {
         branch: { name: "Grandlink", code: "GL", address: null },
         department: { name: "IT" },
         division: { name: "IT" },
+        category: null,
         createdBy: { displayName: "Admin User" },
         items: [
           {
@@ -252,6 +257,7 @@ describe("purchase request generation helpers", () => {
         branch: { name: "Grandlink", code: "GL", address: null },
         department: { name: "IT" },
         division: { name: "IT" },
+        category: null,
         createdBy: { displayName: "Admin User" },
         items: [
           {
@@ -374,6 +380,7 @@ describe("purchase request generation helpers", () => {
         branch: { name: "Grandlink", code: "GL", address: null },
         department: { name: "IT" },
         division: { name: "IT" },
+        category: null,
         createdBy: { displayName: "Admin User" },
         items: [
           {

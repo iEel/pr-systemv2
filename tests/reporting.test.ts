@@ -16,6 +16,7 @@ const records = [
     documentDate: new Date("2026-06-10T00:00:00.000Z"),
     status: "GENERATED",
     totalAmount: "100.00",
+    category: { id: "cat_hardware", name: "Hardware & Equipment" },
     company: { id: "co_sonic", displayName: "Sonic" },
     branch: { id: "br_sonic", name: "Sonic HQ" },
     department: { name: "IT" },
@@ -28,6 +29,7 @@ const records = [
     documentDate: new Date("2026-06-11T00:00:00.000Z"),
     status: "PRINTED",
     totalAmount: "200.00",
+    category: null,
     company: { id: "co_sonic", displayName: "Sonic" },
     branch: { id: "br_sonic", name: "Sonic HQ" },
     department: { name: "IT" },
@@ -40,6 +42,7 @@ const records = [
     documentDate: new Date("2026-06-12T00:00:00.000Z"),
     status: "DRAFT",
     totalAmount: "50.00",
+    category: null,
     company: { id: "co_grandlink", displayName: "Grandlink" },
     branch: { id: "br_grandlink", name: "Grandlink" },
     department: { name: "Helpdesk" },
@@ -52,6 +55,7 @@ const records = [
     documentDate: new Date("2026-05-20T00:00:00.000Z"),
     status: "SIGNED",
     totalAmount: "300.00",
+    category: null,
     company: { id: "co_grandlink", displayName: "Grandlink" },
     branch: { id: "br_grandlink", name: "Grandlink" },
     department: { name: "IT" },
@@ -64,6 +68,7 @@ const records = [
     documentDate: new Date("2026-06-13T00:00:00.000Z"),
     status: "CANCELLED",
     totalAmount: "20.00",
+    category: null,
     company: { id: "co_sonic", displayName: "Sonic" },
     branch: { id: "br_sonic", name: "Sonic HQ" },
     department: { name: "IT" },
@@ -75,6 +80,7 @@ const records = [
 describe("report filters", () => {
   test("normalizes empty and invalid filters to the current year and all scopes", () => {
     expect(normalizeReportFilters({ month: "13", status: "BROKEN", year: "" }, new Date("2026-06-29T00:00:00.000Z"))).toEqual({
+      categoryId: "All",
       companyId: "All",
       month: "All",
       status: "All",
@@ -90,15 +96,19 @@ describe("report filters", () => {
   });
 
   test("builds xlsx export href with active filters", () => {
-    expect(buildReportExportHref({ companyId: "co_sonic", month: "6", status: "GENERATED", year: 2026 })).toBe(
-      "/reports/export?year=2026&month=6&companyId=co_sonic&status=GENERATED",
+    expect(buildReportExportHref({ categoryId: "cat_hardware", companyId: "co_sonic", month: "6", status: "GENERATED", year: 2026 })).toBe(
+      "/reports/export?year=2026&month=6&companyId=co_sonic&status=GENERATED&categoryId=cat_hardware",
     );
   });
 
   test("builds readable active filter chips for the report workspace", () => {
     const chips = buildReportFilterChips(
-      { companyId: "co_sonic", month: "6", status: "GENERATED", year: 2026 },
+      { categoryId: "cat_hardware", companyId: "co_sonic", month: "6", status: "GENERATED", year: 2026 },
       {
+        categories: [
+          { label: "All categories", value: "All" },
+          { label: "Hardware & Equipment", value: "cat_hardware" },
+        ],
         companies: [
           { label: "All companies", value: "All" },
           { label: "Sonic", value: "co_sonic" },
@@ -110,19 +120,24 @@ describe("report filters", () => {
       },
     );
 
-    expect(chips).toEqual(["ปี 2026", "มิ.ย.", "Sonic", "Generated"]);
+    expect(chips).toEqual(["ปี 2026", "มิ.ย.", "Sonic", "Generated", "Hardware & Equipment"]);
   });
 
   test("uses Thai wording for all-scope report filter chips", () => {
     const chips = buildReportFilterChips(
-      { companyId: "All", month: "All", status: "All", year: 2026 },
+      { categoryId: "All", companyId: "All", month: "All", status: "All", year: 2026 },
       {
+        categories: [{ label: "ทุกหมวดหมู่", value: "All" }],
         companies: [{ label: "ทุกบริษัท", value: "All" }],
         statusOptions: [{ label: "ทุกสถานะ", value: "All" }],
       },
     );
 
-    expect(chips).toEqual(["ปี 2026", "ทุกเดือน", "ทุกบริษัท", "ทุกสถานะ"]);
+    expect(chips).toEqual(["ปี 2026", "ทุกเดือน", "ทุกบริษัท", "ทุกสถานะ", "ทุกหมวดหมู่"]);
+  });
+
+  test("normalizes category filters", () => {
+    expect(normalizeReportFilters({ categoryId: "cat_hardware", year: 2026 })).toMatchObject({ categoryId: "cat_hardware" });
   });
 
   test("calculates bounded report bar percentages", () => {
@@ -137,7 +152,7 @@ describe("report view model", () => {
   test("calculates budget summary and grouped PR totals from database-like records", () => {
     const view = buildReportViewModel({
       budgets: [{ budgetAmount: "1000.00" }],
-      filters: { companyId: "All", month: "All", status: "All", year: 2026 },
+      filters: { categoryId: "All", companyId: "All", month: "All", status: "All", year: 2026 },
       records,
     });
 
@@ -163,7 +178,7 @@ describe("report view model", () => {
   test("flags missing budget context when PR amounts exist without an active budget", () => {
     const view = buildReportViewModel({
       budgets: [],
-      filters: { companyId: "All", month: "All", status: "All", year: 2026 },
+      filters: { categoryId: "All", companyId: "All", month: "All", status: "All", year: 2026 },
       records,
     });
 
@@ -177,7 +192,7 @@ describe("report view model", () => {
   test("writes missing budget warnings into the exported workbook summary sheet", () => {
     const view = buildReportViewModel({
       budgets: [],
-      filters: { companyId: "All", month: "All", status: "All", year: 2026 },
+      filters: { categoryId: "All", companyId: "All", month: "All", status: "All", year: 2026 },
       records,
     });
     const sheets = buildReportWorkbookSheets(view);
@@ -187,5 +202,44 @@ describe("report view model", () => {
       "Budget Warning",
       "WARNING: No active Budget Master row matched this report filter. Remaining Budget is not reliable for this export.",
     ]);
+  });
+
+  test("groups filtered purchase requests by category and exports category details", () => {
+    const view = buildReportViewModel({
+      budgets: [],
+      filters: { categoryId: "cat_hardware", companyId: "All", month: "All", status: "All", year: 2026 },
+      records: [
+        {
+          id: "pr_hardware",
+          prNo: "ITPR_2606007",
+          documentDate: new Date("2026-06-20T00:00:00.000Z"),
+          status: "GENERATED",
+          totalAmount: "1000.00",
+          category: { id: "cat_hardware", name: "Hardware & Equipment" },
+          company: { id: "co_sonic", displayName: "Sonic" },
+          branch: { id: "br_sonic", name: "Sonic HQ" },
+          department: { name: "IT" },
+          division: null,
+          createdBy: { displayName: "Admin User" },
+        },
+        {
+          id: "pr_uncategorized",
+          prNo: "ITPR_2606008",
+          documentDate: new Date("2026-06-21T00:00:00.000Z"),
+          status: "DRAFT",
+          totalAmount: "200.00",
+          category: null,
+          company: { id: "co_sonic", displayName: "Sonic" },
+          branch: { id: "br_sonic", name: "Sonic HQ" },
+          department: { name: "IT" },
+          division: null,
+          createdBy: { displayName: "Admin User" },
+        },
+      ],
+    });
+
+    expect(view.categorySummary).toEqual([{ category: "Hardware & Equipment", categoryId: "cat_hardware", count: 1, totalAmount: 1000 }]);
+    expect(view.detailRows).toEqual([expect.objectContaining({ category: "Hardware & Equipment" })]);
+    expect(buildReportWorkbookSheets(view).find((sheet) => sheet.name === "By Category")?.rows[0]).toEqual(["Category", "PR Count", "Total Amount"]);
   });
 });

@@ -45,6 +45,7 @@ type PurchaseRequestRenderRecord = {
   };
   department: { name: string };
   division: { name: string } | null;
+  category: { code: string; name: string } | null;
   createdBy: { displayName: string };
   items: Array<{
     lineNo: number;
@@ -224,6 +225,8 @@ export function buildPurchaseRequestRenderPayload(record: PurchaseRequestRenderR
     branchAddress: record.branch.documentAddress || record.branch.address || "-",
     department: record.department.name,
     division: record.division?.name || "-",
+    categoryCode: record.category?.code || "",
+    categoryName: record.category?.name || "",
     purpose: record.purpose,
     purposeNewMark: checkboxMark(record.purpose === "ซื้อใหม่"),
     purposeRenewalMark: checkboxMark(record.purpose === "ต่ออายุ"),
@@ -509,6 +512,7 @@ async function loadDraftForGeneration(id: string) {
     include: {
       branch: true,
       company: true,
+      category: true,
       createdBy: true,
       department: true,
       division: true,
@@ -536,6 +540,7 @@ async function loadDraftForPreview(id: string) {
     include: {
       branch: true,
       company: true,
+      category: true,
       createdBy: true,
       department: true,
       division: true,
@@ -606,6 +611,7 @@ export async function generatePurchaseRequestPdf(id: string) {
       include: {
         branch: true,
         company: true,
+        category: true,
         createdBy: true,
         department: true,
         division: true,

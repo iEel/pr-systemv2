@@ -36,6 +36,7 @@ function readParam(params: Awaited<SearchParams>, key: keyof ReportFiltersInput)
 
 function readFilters(params: Awaited<SearchParams>): ReportFiltersInput {
   return {
+    categoryId: readParam(params, "categoryId"),
     companyId: readParam(params, "companyId"),
     month: readParam(params, "month"),
     status: readParam(params, "status"),
@@ -53,6 +54,7 @@ const monthFilterOptions = [
 
 const reportStatusLabels: PRStatus[] = ["Draft", "Generated", "Printed", "Signed", "Cancelled", "Reissued"];
 const allCompanyFilterLabel = "ทุกบริษัท";
+const allCategoryFilterLabel = "ทุกหมวดหมู่";
 const allStatusFilterLabel = "ทุกสถานะ";
 const noBudgetWarningTitleFallback = "ยังไม่มี Budget สำหรับมุมมองนี้";
 const monthlySummaryColumns: ReportTableColumn[] = [
@@ -79,12 +81,17 @@ function readCompanyFilterLabel(company: ReportPageData["companies"][number]) {
   return company.value === "All" ? allCompanyFilterLabel : company.label;
 }
 
+function readCategoryFilterLabel(category: ReportPageData["categories"][number]) {
+  return category.value === "All" ? allCategoryFilterLabel : category.label;
+}
+
 function readStatusFilterLabel(status: ReportPageData["statusOptions"][number]) {
   return status.value === "All" ? allStatusFilterLabel : status.label;
 }
 
 function buildReportFilterChipOptions(data: ReportPageData) {
   return {
+    categories: data.categories.map((category) => ({ ...category, label: readCategoryFilterLabel(category) })),
     companies: data.companies.map((company) => ({ ...company, label: readCompanyFilterLabel(company) })),
     statusOptions: data.statusOptions.map((status) => ({ ...status, label: readStatusFilterLabel(status) })),
   };
@@ -175,7 +182,7 @@ function ReportHealthStrip({ data }: { data: ReportPageData }) {
 function FilterPanel({ data, filters }: { data: ReportPageData; filters: NormalizedReportFilters }) {
   return (
     <Card>
-      <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[0.7fr_0.8fr_1.2fr_1fr_auto] xl:items-end">
+      <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[0.7fr_0.8fr_1.2fr_1fr_1.2fr_auto] xl:items-end">
         <label className="grid gap-1.5 text-sm font-semibold text-ink">
           ปี
           <input className={inputClass()} defaultValue={filters.year} min="2000" name="year" type="number" />
@@ -206,6 +213,16 @@ function FilterPanel({ data, filters }: { data: ReportPageData; filters: Normali
             {data.statusOptions.map((status) => (
               <option key={status.value} value={status.value}>
                 {readStatusFilterLabel(status)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1.5 text-sm font-semibold text-ink">
+          หมวดหมู่
+          <select className={inputClass()} defaultValue={filters.categoryId} name="categoryId">
+            {data.categories.map((category) => (
+              <option key={category.value} value={category.value}>
+                {readCategoryFilterLabel(category)}
               </option>
             ))}
           </select>
@@ -346,6 +363,44 @@ function StatusDistributionPanel({ maxValue, rows }: { maxValue: number; rows: R
   );
 }
 
+function CategorySummaryTable({ maxValue, rows }: { maxValue: number; rows: ReportPageData["categorySummary"] }) {
+  return (
+    <TableWrap>
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-base font-bold text-ink">Category Summary</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-[420px] w-full border-collapse">
+          <thead>
+            <tr>
+              <th className={`${tableHeaderClass} px-3 py-2 text-left`}>Category</th>
+              <th className={`${tableHeaderClass} px-3 py-2 text-right`}>PR Count</th>
+              <th className={`${tableHeaderClass} px-3 py-2 text-right`}>Total Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.categoryId || "not-categorized"}>
+                <td className="border-t border-border px-3 py-2.5 text-sm font-semibold text-ink">{row.category}</td>
+                <td className="border-t border-border px-3 py-2.5 text-right text-sm tabular-nums">{row.count}</td>
+                <td className="border-t border-border px-3 py-2.5 text-right text-sm font-semibold tabular-nums">
+                  {formatAmount(row.totalAmount)}
+                  <MiniBar maxValue={maxValue} value={row.totalAmount} />
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 ? (
+              <tr>
+                <td className="px-3 py-8 text-center text-sm text-muted" colSpan={3}>ไม่พบข้อมูลตาม filter ที่เลือก</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+    </TableWrap>
+  );
+}
+
 export default async function ReportsPage({ searchParams }: { searchParams?: SearchParams }) {
   const params = searchParams ? await searchParams : {};
   const data = await getReportPageData(readFilters(params));
@@ -353,6 +408,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
   const maxMonthlyTotal = Math.max(...data.monthlySummary.map((row) => row.totalAmount), 0);
   const maxStatusTotal = Math.max(...data.statusSummary.map((row) => row.totalAmount), 0);
   const maxCompanyTotal = Math.max(...data.companySummary.map((row) => row.totalAmount), 0);
+  const maxCategoryTotal = Math.max(...data.categorySummary.map((row) => row.totalAmount), 0);
 
   return (
     <AppFrame>
@@ -374,7 +430,10 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.8fr)]">
           <MonthlySummaryTable maxValue={maxMonthlyTotal} rows={data.monthlySummary} />
-          <StatusDistributionPanel maxValue={maxStatusTotal} rows={data.statusSummary} />
+          <div className="space-y-5">
+            <StatusDistributionPanel maxValue={maxStatusTotal} rows={data.statusSummary} />
+            <CategorySummaryTable maxValue={maxCategoryTotal} rows={data.categorySummary} />
+          </div>
         </div>
 
         <ReportTable columns={companySummaryColumns} title="Company / Branch Summary">
@@ -398,7 +457,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
           ) : null}
         </ReportTable>
 
-        <ReportTable columns={["Date", "PR No.", "Company", "Branch", "Department", "Status", "Created By", "Total Amount"]} title="PR Detail">
+        <ReportTable columns={["Date", "PR No.", "Company", "Branch", "Department", "Category", "Status", "Created By", "Total Amount"]} title="PR Detail">
           {data.detailRows.map((row) => (
             <tr key={row.id}>
               <td className={tableCellClass}>{formatDate(row.date)}</td>
@@ -408,6 +467,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
               <td className={`${tableCellClass} font-semibold text-ink`}>{row.company}</td>
               <td className={tableCellClass}>{row.branch}</td>
               <td className={tableCellClass}>{row.department}</td>
+              <td className={tableCellClass}>{row.category}</td>
               <td className={tableCellClass}>
                 <Badge tone={getReportStatusConfig(row.status).tone}>{row.status}</Badge>
               </td>
@@ -417,7 +477,7 @@ export default async function ReportsPage({ searchParams }: { searchParams?: Sea
           ))}
           {data.detailRows.length === 0 ? (
             <tr>
-              <td className="px-4 py-8 text-center text-sm text-muted" colSpan={8}>ไม่พบข้อมูลตาม filter ที่เลือก</td>
+              <td className="px-4 py-8 text-center text-sm text-muted" colSpan={9}>ไม่พบข้อมูลตาม filter ที่เลือก</td>
             </tr>
           ) : null}
         </ReportTable>

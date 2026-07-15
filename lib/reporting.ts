@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import type { XlsxSheet } from "./xlsx";
 
 export type ReportFiltersInput = {
+  categoryId?: string | null;
   companyId?: string | null;
   month?: string | null;
   status?: string | null;
@@ -9,6 +10,7 @@ export type ReportFiltersInput = {
 };
 
 export type NormalizedReportFilters = {
+  categoryId: string;
   companyId: string;
   month: string;
   status: string;
@@ -21,6 +23,7 @@ export type ReportingPrRecord = {
   documentDate: Date;
   status: string;
   totalAmount: string | number | { toString(): string };
+  category: { id: string; name: string } | null;
   company: { id: string; displayName: string };
   branch: { id: string; name: string };
   department: { name: string };
@@ -72,8 +75,16 @@ export type StatusSummaryRow = {
   totalAmount: number;
 };
 
+export type CategorySummaryRow = {
+  category: string;
+  categoryId: string | null;
+  count: number;
+  totalAmount: number;
+};
+
 export type ReportDetailRow = {
   branch: string;
+  category: string;
   company: string;
   createdBy: string;
   date: string;
@@ -87,6 +98,7 @@ export type ReportDetailRow = {
 
 export type ReportViewModel = {
   budgetWarning: ReportBudgetWarning | null;
+  categorySummary: CategorySummaryRow[];
   companySummary: CompanySummaryRow[];
   detailRows: ReportDetailRow[];
   filters: NormalizedReportFilters;
@@ -101,6 +113,7 @@ export type ReportFilterOption = {
 };
 
 export type ReportPageData = ReportViewModel & {
+  categories: ReportFilterOption[];
   companies: ReportFilterOption[];
   statusOptions: ReportFilterOption[];
 };
@@ -159,9 +172,10 @@ export function normalizeReportFilters(input: ReportFiltersInput = {}, now = new
   const month = Number.isInteger(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12 ? String(parsedMonth) : "All";
   const rawStatus = String(input.status || "All").toUpperCase();
   const status = reportStatuses.has(rawStatus) ? rawStatus : "All";
+  const categoryId = input.categoryId?.trim() || "All";
   const companyId = input.companyId?.trim() || "All";
 
-  return { companyId, month, status, year };
+  return { categoryId, companyId, month, status, year };
 }
 
 export function buildReportDateRange(filters: Pick<NormalizedReportFilters, "month" | "year">) {
@@ -178,6 +192,7 @@ export function buildReportExportHref(filters: NormalizedReportFilters) {
   if (filters.month !== "All") params.set("month", filters.month);
   if (filters.companyId !== "All") params.set("companyId", filters.companyId);
   if (filters.status !== "All") params.set("status", filters.status);
+  if (filters.categoryId !== "All") params.set("categoryId", filters.categoryId);
   return `/reports/export?${params.toString()}`;
 }
 
@@ -187,13 +202,14 @@ function readFilterOptionLabel(options: ReportFilterOption[], value: string, fal
 
 export function buildReportFilterChips(
   filters: NormalizedReportFilters,
-  options: { companies: ReportFilterOption[]; statusOptions: ReportFilterOption[] },
+  options: { categories: ReportFilterOption[]; companies: ReportFilterOption[]; statusOptions: ReportFilterOption[] },
 ) {
   const month = filters.month === "All" ? "ทุกเดือน" : monthLabels[Number(filters.month) - 1] || `เดือน ${filters.month}`;
   const company = readFilterOptionLabel(options.companies, filters.companyId, filters.companyId === "All" ? "ทุกบริษัท" : filters.companyId);
   const status = readFilterOptionLabel(options.statusOptions, filters.status, filters.status === "All" ? "ทุกสถานะ" : filters.status);
+  const category = readFilterOptionLabel(options.categories, filters.categoryId, filters.categoryId === "All" ? "ทุกหมวดหมู่" : filters.categoryId);
 
-  return [`ปี ${filters.year}`, month, company, status];
+  return [`ปี ${filters.year}`, month, company, status, category];
 }
 
 export function calculateReportBarPercent(value: number, maxValue: number) {
@@ -213,6 +229,7 @@ function matchesFilters(record: ReportingPrRecord, filters: NormalizedReportFilt
   return (
     record.documentDate >= range.gte &&
     record.documentDate < range.lt &&
+    (filters.categoryId === "All" || record.category?.id === filters.categoryId) &&
     (filters.companyId === "All" || record.company.id === filters.companyId) &&
     (filters.status === "All" || status === filters.status)
   );
@@ -244,6 +261,7 @@ export function buildReportViewModel({
   const totalBudget = roundMoney(budgets.reduce((sum, budget) => sum + toNumber(budget.budgetAmount), 0));
   const monthlySummary = emptyMonthlyRows(filters);
   const companyGroups = new Map<string, CompanySummaryRow>();
+  const categoryGroups = new Map<string, CategorySummaryRow>();
   const statusGroups = new Map<string, StatusSummaryRow>();
   let totalAmount = 0;
   let usedAmount = 0;
@@ -256,6 +274,9 @@ export function buildReportViewModel({
     const month = record.documentDate.getUTCMonth() + 1;
     const monthly = monthlySummary.find((row) => row.month === month);
     const companyKey = `${record.company.id}:${record.branch.id}`;
+    const categoryId = record.category?.id || null;
+    const category = record.category?.name || "Not categorized";
+    const categoryKey = categoryId || "__not_categorized__";
     const companyGroup = companyGroups.get(companyKey) || {
       branch: record.branch.name,
       company: record.company.displayName,
@@ -266,6 +287,7 @@ export function buildReportViewModel({
     };
     const uiStatus = toUiStatus(status);
     const statusGroup = statusGroups.get(uiStatus) || { count: 0, status: uiStatus, totalAmount: 0 };
+    const categoryGroup = categoryGroups.get(categoryKey) || { category, categoryId, count: 0, totalAmount: 0 };
 
     totalAmount += amount;
     if (usedStatuses.has(status)) usedAmount += amount;
@@ -285,6 +307,10 @@ export function buildReportViewModel({
     if (toDateOnly(record.documentDate) > companyGroup.latestDate) companyGroup.latestDate = toDateOnly(record.documentDate);
     companyGroups.set(companyKey, companyGroup);
 
+    categoryGroup.count += 1;
+    categoryGroup.totalAmount = roundMoney(categoryGroup.totalAmount + amount);
+    categoryGroups.set(categoryKey, categoryGroup);
+
     statusGroup.count += 1;
     statusGroup.totalAmount = roundMoney(statusGroup.totalAmount + amount);
     statusGroups.set(uiStatus, statusGroup);
@@ -302,12 +328,14 @@ export function buildReportViewModel({
 
   return {
     budgetWarning: buildReportBudgetWarning(summary),
+    categorySummary: Array.from(categoryGroups.values()).sort((left, right) => right.totalAmount - left.totalAmount || left.category.localeCompare(right.category)),
     companySummary: Array.from(companyGroups.values()).sort((left, right) => right.totalAmount - left.totalAmount || left.company.localeCompare(right.company)),
     detailRows: filteredRecords
       .slice()
       .sort((left, right) => right.documentDate.getTime() - left.documentDate.getTime())
       .map((record) => ({
         branch: record.branch.name,
+        category: record.category?.name || "Not categorized",
         company: record.company.displayName,
         createdBy: record.createdBy.displayName,
         date: toDateOnly(record.documentDate),
@@ -330,6 +358,7 @@ function buildPrismaWhere(filters: NormalizedReportFilters): Prisma.PurchaseRequ
 
   return {
     documentDate: { gte: range.gte, lt: range.lt },
+    ...(filters.categoryId !== "All" ? { categoryId: filters.categoryId } : {}),
     ...(filters.companyId !== "All" ? { companyId: filters.companyId } : {}),
     ...(filters.status !== "All" ? { status: filters.status } : {}),
   };
@@ -341,6 +370,7 @@ async function loadReportingRecords(filters: NormalizedReportFilters) {
   return prisma.purchaseRequest.findMany({
     include: {
       branch: { select: { id: true, name: true } },
+      category: { select: { id: true, name: true } },
       company: { select: { displayName: true, id: true } },
       createdBy: { select: { displayName: true } },
       department: { select: { name: true } },
@@ -380,16 +410,33 @@ async function loadCompanyOptions() {
   ];
 }
 
+async function loadCategoryOptions() {
+  const { prisma } = await import("./prisma");
+
+  const categories = await prisma.purchaseRequestCategory.findMany({
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    select: { id: true, name: true },
+    where: { isActive: true },
+  });
+
+  return [
+    { label: "ทุกหมวดหมู่", value: "All" },
+    ...categories.map((category) => ({ label: category.name, value: category.id })),
+  ];
+}
+
 export async function getReportPageData(input: ReportFiltersInput = {}): Promise<ReportPageData> {
   const filters = normalizeReportFilters(input);
-  const [records, budgets, companies] = await Promise.all([
+  const [records, budgets, categories, companies] = await Promise.all([
     loadReportingRecords(filters),
     loadReportingBudgets(filters),
+    loadCategoryOptions(),
     loadCompanyOptions(),
   ]);
 
   return {
     ...buildReportViewModel({ budgets, filters, records }),
+    categories,
     companies,
     statusOptions: reportStatusOptions,
   };
@@ -410,6 +457,7 @@ export function buildReportWorkbookSheets(view: ReportViewModel): XlsxSheet[] {
         ["Month", view.filters.month],
         ["Company", view.filters.companyId],
         ["Status", view.filters.status],
+        ["Category", view.filters.categoryId],
         ["Total PR", view.summary.totalPr],
         ["Total Amount", view.summary.totalAmount],
         ["Used Amount", view.summary.usedAmount],
@@ -441,10 +489,17 @@ export function buildReportWorkbookSheets(view: ReportViewModel): XlsxSheet[] {
       ],
     },
     {
+      name: "By Category",
+      rows: [
+        ["Category", "PR Count", "Total Amount"],
+        ...view.categorySummary.map((row) => [row.category, row.count, row.totalAmount]),
+      ],
+    },
+    {
       name: "PR Detail",
       rows: [
-        ["Date", "PR No", "Company", "Branch", "Department", "Division", "Status", "Created By", "Total Amount"],
-        ...view.detailRows.map((row) => [row.date, row.prNo, row.company, row.branch, row.department, row.division, row.status, row.createdBy, row.totalAmount]),
+        ["Date", "PR No", "Company", "Branch", "Department", "Division", "Category", "Status", "Created By", "Total Amount"],
+        ...view.detailRows.map((row) => [row.date, row.prNo, row.company, row.branch, row.department, row.division, row.category, row.status, row.createdBy, row.totalAmount]),
       ],
     },
   ];
