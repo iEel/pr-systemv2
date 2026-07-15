@@ -137,6 +137,40 @@ Current rules:
 - Referenced categories are never hard-deleted. Deactivation removes a category from new-Draft choices but preserves the relation and historical display for existing PRs.
 - The checked-in migration and development seed create the approved active categories in sort order: `HARDWARE`, `SOFTWARE_LICENSE`, `SUBSCRIPTION_RENEWAL`, `SERVICE_MAINTENANCE`, `NETWORK_INFRASTRUCTURE`, `CLOUD_HOSTING`, and `OTHER`.
 
+### RecurringPurchaseRequestSchedule
+
+Annual schedule configuration plus a normalized snapshot used for future Drafts.
+
+Key fields:
+- Identity and traceability: `id`, `name`, nullable `sourcePurchaseRequestId`.
+- Snapshot: `companyId`, `branchId`, `departmentId`, optional `divisionId`, `categoryId`, `purpose`, `purchaseMethod`, `remark`, and `vatRate`.
+- Annual rule: `renewalMonth`, `renewalDay`, `leadDays`, `nextRunDate`, and optional `lastRunAt`.
+- Ownership and lifecycle: `responsibleUserId`, `createdById`, `status`, `createdAt`, and `updatedAt`.
+
+Relations and rules:
+- The source PR relation uses `onDelete: SetNull`; the schedule snapshot remains after an eligible source PR is removed.
+- Company, Branch, Department, optional Division, Category, responsible User, and creator User are required references with no-delete behavior.
+- `status` persists only `ACTIVE` or `PAUSED`; `Needs attention` is a derived UI state caused by a failed latest run or inactive required reference.
+- `RecurringPurchaseRequestScheduleItem` rows and `RecurringPurchaseRequestRun` rows belong to the schedule. The schedule has indexes on `status + nextRunDate` and `responsibleUserId` for due-work and ownership lookups.
+
+### RecurringPurchaseRequestScheduleItem
+
+Normalized schedule item snapshot.
+
+- Each row has `scheduleId`, `lineNo`, `rowType`, `accountCode`, `description`, `quantity`, `unitCost`, and `totalAmount`.
+- `rowType` is `ITEM`, `HEADING`, or `DETAIL`; the row rules and numeric precision match `PurchaseRequestItem`.
+- `scheduleId + lineNo` is unique and schedule deletion cascades to its snapshot rows.
+
+### RecurringPurchaseRequestRun
+
+One execution record per schedule occurrence.
+
+- Stores `scheduleId`, `occurrenceYear`, `renewalDate`, `scheduledDraftDate`, `status`, optional `purchaseRequestId`, optional sanitized `errorMessage`, `startedAt`, and optional `finishedAt`.
+- `status` is `PROCESSING`, `SUCCEEDED`, or `FAILED`.
+- `scheduleId + occurrenceYear` is unique. It is the authoritative annual idempotency guarantee for cron overlap and manual Retry.
+- `purchaseRequestId` is unique when present and forms a one-to-one link to the generated Draft; the Draft's reverse relation supports recurring origin display and trace links.
+- Run deletion is prevented while its schedule remains; clearing a linked PR sets `purchaseRequestId` to null.
+
 ### PurchaseRequest
 
 Main document record.

@@ -68,6 +68,14 @@ Last updated: 2026-07-15
 - Reissue automatically reuses an active source category. A missing or inactive source category requires an explicit active-category selection before the replacement Draft is created.
 - PR list, Board, Detail, Reports, XLSX export, and Carbone payloads expose the category when present; legacy null relations display `Not categorized`.
 
+### Annual Recurring PR
+
+- `/recurring-pr` is a separate recurring-schedule workspace; users with `PR_RECURRING_MANAGE` can create a schedule from a PR, edit it, pause/resume it, and retry a failed run.
+- Schedules are annual-only and persist a normalized PR header/item snapshot. They calculate lead dates as Bangkok calendar dates and preserve Heading, Item, and Detail row types.
+- A daily private CLI worker processes due active schedules, catches up missed dates, and creates a linked `DRAFT` for the responsible active user. It does not allocate a PR number, render/issue a document, or send external notifications.
+- The `scheduleId + occurrenceYear` run key prevents duplicate annual Drafts across overlapping processes and retries. `Needs attention` is derived when the latest run fails or a required reference is inactive.
+- See [RECURRING_PR.md](RECURRING_PR.md) for the user, worker, and operational contract.
+
 ### Draft Preview And Issue PR
 
 - Drafts can render `Preview Draft` PDF before official issuance.

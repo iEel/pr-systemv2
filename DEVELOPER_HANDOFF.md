@@ -24,6 +24,7 @@ Completed:
 - Auth hardening proxy protects app routes before server components load: anonymous users redirect to `/login?callbackUrl=...`, and authenticated users without route-level admin permissions redirect to `/forbidden`.
 - DB-backed PR list, dashboard recent PR embed, PR detail, draft create, and draft edit.
 - PR Category Master is complete: seven active categories are seeded through migration and development seed, `/masters/pr-categories` provides `MASTER_DATA_MANAGE` CRUD with audit history, and referenced categories are deactivated instead of deleted.
+- Annual Recurring PR is implemented in the checked-in code: `/recurring-pr` owns annual schedule configuration and run history; schedules snapshot a source PR's eligible header/item fields, and the private Bangkok-date CLI creates only reviewable Drafts for active responsible users. Database uniqueness on `scheduleId + occurrenceYear` prevents duplicate annual runs. See `docs/RECURRING_PR.md` for the workflow and operations contract; migration/live UAT evidence must be recorded separately after execution.
 - Every new or edited Draft requires an active category on the server. The SQL relation remains nullable so legacy controlled PRs without a category stay readable, renderable, and display `Not categorized`.
 - Clone preserves its source category. Reissue automatically reuses an active source category; for a missing or inactive source category, the user must choose an active category before the replacement Draft is created.
 - PR Documents now supports `Table | Board` views on the same filtered page. Table keeps the dense list workflow; Board groups active Draft/Generated/Printed workflow rows separately from Completed/Archived Signed/Cancelled/Reissued rows, with read-only quick actions and no drag-and-drop status mutation.
@@ -321,6 +322,8 @@ Previous verified result on 2026-06-30 after Auth Hardening proxy:
 | `/masters/companies` | Company/branch document profile, header/footer assets | `app/masters/companies/page.tsx` |
 | `/masters/companies/assets/[branchId]/[assetType]` | Header/footer image preview | `app/masters/companies/assets/[branchId]/[assetType]/route.ts` |
 | `/masters/pr-categories` | PR Category Master CRUD, active-state management, and audit history | `app/masters/pr-categories/page.tsx`, `lib/pr-category-master.ts` |
+| `/recurring-pr` | Annual schedule list, filters, create-from-PR, and status summary | `app/recurring-pr/page.tsx`, `lib/recurring-pr.ts` |
+| `/recurring-pr/[id]` | Schedule snapshot, run history, pause/resume, and authorized Retry | `app/recurring-pr/[id]/page.tsx`, `app/recurring-pr/actions.ts`, `lib/recurring-pr-worker.ts` |
 | `/masters/budgets` | SQL Server Budget Master CRUD for yearly IT budget rows | `app/masters/budgets/page.tsx`, `lib/budget-master.ts` |
 | `/reports` | SQL Server PR reports with filters, no-budget warning state, and XLSX export link | `app/reports/page.tsx`, `lib/reporting.ts` |
 | `/reports/export` | Filter-preserving PR report XLSX download, including a Summary warning row when Budget Master is missing for the view | `app/reports/export/route.ts`, `lib/xlsx.ts`, `lib/reporting.ts` |
@@ -346,6 +349,10 @@ Previous verified result on 2026-06-30 after Auth Hardening proxy:
 | `lib/pr-submit-intent.ts` | Reads draft form submit intent and maps save vs preview redirects. |
 | `lib/pr-draft.ts` | Draft create/update/clone-source parsing, validation, totals, and transactions. |
 | `lib/pr-category-master.ts` | PR category parsing, permission-guarded CRUD, active-state changes, and audit events. |
+| `lib/recurring-pr.ts` | Annual schedule snapshot mapping, validation, status derivation, persistence, and schedule audit events. |
+| `lib/recurring-pr-date.ts` | Bangkok calendar-date and annual occurrence calculations. |
+| `lib/recurring-pr-worker.ts` | Due-schedule processing, unique annual run claim, Draft creation, Retry, catch-up, and System audit behavior. |
+| `scripts/process-recurring-pr.ts` | Private cron/manual recurring-worker CLI with safe JSON and exit codes. |
 | `lib/pr-generate.ts` | Running number allocation, Carbone payload, draft preview, Issue PR, DOCX image patching, and PDF output. |
 | `lib/pr-document-control.ts` | Permission-guarded PDF/attachment delivery, mark printed, quotation upload, signed upload, cancel, and reissue commands. |
 | `lib/pdf-visual-qa.ts` | PDF QA report helpers for signature, size, page count, rendered page evidence, and Markdown checklist. |
@@ -465,7 +472,7 @@ Important current tags:
 
 ## Recommended Next Work
 
-1. Implement the Annual Recurring PR plan. It depends on the completed Category phase: each scheduled Draft must use an active primary category, while legacy nullable PR categories remain readable.
+1. Apply `000010_annual_recurring_pr` in the intended environment and record migration, concurrent-worker, catch-up, Retry, and browser QA evidence; do not treat checked-in documentation as proof of live verification.
 2. Add browser-level low-role smoke coverage by seeding a disposable `IT_USER`/`VIEWER` test account or adding a dedicated test fixture.
 3. Add user-facing PR warning banners for `MISSING` / `OVER_BUDGET` audit states if IT wants budget warnings visible before audit review.
 4. Run a real UAT backup/restore drill using `docs/BACKUP_RESTORE.md`.
@@ -478,6 +485,7 @@ Important current tags:
 - [docs/SETUP.md](docs/SETUP.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/FEATURES.md](docs/FEATURES.md)
+- [docs/RECURRING_PR.md](docs/RECURRING_PR.md)
 - [docs/DOCUMENT_GENERATION.md](docs/DOCUMENT_GENERATION.md)
 - [docs/DATA_MODEL.md](docs/DATA_MODEL.md)
 - [docs/DATABASE.md](docs/DATABASE.md)

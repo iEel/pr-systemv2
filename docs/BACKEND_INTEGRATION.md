@@ -186,6 +186,20 @@ The file delivery access-control boundary is in place for:
 - `/templates/[id]/file`, which requires `TEMPLATE_MANAGE`.
 - Authorization failures on those routes return status-aware JSON before metadata lookup or storage reads.
 
+## Annual Recurring PR Integration
+
+The recurring path is server-side and private:
+
+- `/recurring-pr` and `/recurring-pr/[id]` load schedule/read models; server actions create from a source PR, update, pause/resume, and Retry.
+- `lib/recurring-pr.ts` parses schedule data, validates active references, maps a source PR into the editable snapshot, derives the UI status, and writes schedule audit events.
+- `lib/recurring-pr-worker.ts` finds active schedules due on or before the current Asia/Bangkok date, validates references/snapshots, claims the annual run, creates the responsible user's `DRAFT`, reserves budget, links the run, advances the schedule, and writes System audit records.
+- `scripts/process-recurring-pr.ts`, invoked through `npm run recurring-pr:process`, imports the shared worker directly. It has no public HTTP route and no interactive Auth.js dependency.
+- The worker's transaction boundary covers run/Draft linkage, budget reservation, successful run state, schedule advancement, and automated Draft audit. The unique `scheduleId + occurrenceYear` constraint turns overlapping attempts into skips rather than duplicate Drafts.
+- Validation failures persist a safe `FAILED` run and derive `Needs attention`. Cron does not replay that run; after correction, an authorized `PR_RECURRING_MANAGE` user retries the same run. The responsible user must be active and is never replaced silently.
+- The worker creates only `DRAFT` PR records. It does not render, allocate a running number, issue a PR, persist generated-document state, or notify external systems.
+
+See [RECURRING_PR.md](RECURRING_PR.md) for exact snapshot boundaries, CLI exit codes, and Ubuntu operations.
+
 ## Remaining Integration Priorities
 
 1. Add user-facing PR warning banners for missing or over-budget soft budget states if required after UAT.

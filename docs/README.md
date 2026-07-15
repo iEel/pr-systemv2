@@ -8,6 +8,7 @@ Start here:
 - [SETUP.md](SETUP.md) - local setup, commands, and troubleshooting.
 - [ARCHITECTURE.md](ARCHITECTURE.md) - current Next.js, SQL Server, storage, auth, and Carbone architecture.
 - [FEATURES.md](FEATURES.md) - current implemented feature inventory.
+- [RECURRING_PR.md](RECURRING_PR.md) - annual schedule snapshot, worker, retry, RBAC, and Ubuntu operation contract.
 - [DOCUMENT_GENERATION.md](DOCUMENT_GENERATION.md) - Word template, Carbone payload, PDF preview, Issue PR, and formatting contract.
 - [DATA_MODEL.md](DATA_MODEL.md) - current domain model, PR Category Master, legacy-compatible category relation, and PR lifecycle.
 - [DATABASE.md](DATABASE.md) - selected SQL Server database name and environment configuration.

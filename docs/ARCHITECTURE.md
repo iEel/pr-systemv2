@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-06-30
+Last updated: 2026-07-15
 
 ## Current Runtime Shape
 
@@ -40,6 +40,9 @@ The application is a server-heavy Next.js App Router app. UI routes are mostly s
 | `lib/budget-master.ts` | Budget filter parsing, amount normalization, CRUD, active-state commands, and audit logging. |
 | `lib/user-management.ts` | User admin filters, role validation, create/update, password reset, self-protection, and audit logging. |
 | `lib/running-number-settings.ts` | Running-number validation, scope checks, preview formatting, create/update, and audit logging. |
+| `lib/recurring-pr.ts` | Annual schedule parsing, snapshot persistence, active-reference validation, UI status derivation, and schedule commands. |
+| `lib/recurring-pr-worker.ts` | Private Bangkok-date due-worker, annual run idempotency, Draft creation, Retry, and System audit records. |
+| `scripts/process-recurring-pr.ts` | Cron/manual CLI that prints one safe JSON summary and disconnects Prisma before exit. |
 | `prisma/` | SQL Server schema, migrations, seed script. |
 | `storage/` | Local document files: source-controlled templates/company asset baselines plus generated PDFs, signed uploads, quotations, and previews. |
 | `tests/` | Vitest tests for pure helpers and command contracts. |
@@ -123,6 +126,24 @@ See [DOCUMENT_GENERATION.md](DOCUMENT_GENERATION.md) for the full Carbone payloa
 | `/audit-logs/export` | SQL Server audit records with the same filters, serialized to bounded CSV. |
 | `/reports` | SQL Server PR/Budget aggregates with year/month/company/status filters and no-budget warning state. |
 | `/reports/export` | Same filtered report serialized as a local XLSX workbook, including Summary warnings when budget context is missing. |
+| `/recurring-pr` | SQL Server recurring schedule list, filters, status summary, and create-from-PR entry points. |
+| `/recurring-pr/[id]` | Schedule snapshot, annual run history, pause/resume, and authorized Retry actions. |
+
+## Recurring Worker Flow
+
+```mermaid
+flowchart TD
+  Cron["Cron or manual CLI"] --> Cli["npm run recurring-pr:process"]
+  Cli --> Bangkok["Resolve Asia/Bangkok calendar date"]
+  Bangkok --> Due["Find ACTIVE schedules with nextRunDate <= today"]
+  Due --> Validate["Validate references and snapshot"]
+  Validate -->|invalid| Failed["Persist FAILED run + System audit"]
+  Validate -->|valid| Claim["Claim unique scheduleId + occurrenceYear run"]
+  Claim -->|existing| Skip["Skip occurrence"]
+  Claim -->|new| Tx["Transaction: create responsible-user DRAFT, reserve budget, link run, advance schedule, audit"]
+```
+
+The CLI does not traverse a public HTTP route and never renders or issues a controlled PR. A failed persisted run requires correction and an authorized manual Retry; an overdue active schedule is eligible for catch-up on the next invocation.
 
 ## State Rules
 

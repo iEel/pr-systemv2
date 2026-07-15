@@ -1,6 +1,6 @@
 # QA Checklist
 
-Last updated: 2026-07-03
+Last updated: 2026-07-15
 
 Use this before handing work to another developer or preparing a release.
 
@@ -53,6 +53,18 @@ Expected:
 - Relevant `docs/*.md` files are updated in the same change as code/UI/template/workflow edits.
 - [DOCUMENT_GENERATION.md](DOCUMENT_GENERATION.md) is updated when Word/PDF template tags, amount formatting, header/footer rendering, Draft Preview, or Issue PR behavior changes.
 - Historical files under `docs/superpowers/` are left intact unless the user explicitly asks to revise phase history.
+
+## Annual Recurring PR Checks
+
+- Create a schedule only from a source PR as `ADMIN` or `IT_ADMIN`; confirm `IT_USER` can view but cannot create, edit, pause/resume, or Retry.
+- Confirm the schedule form snapshots Company, Branch, Department, Division, Category, Purpose, Purchase Method, Remark, VAT, and ordered Heading/Item/Detail rows. Confirm it does not carry PR/reference numbers, document state, generated snapshot, attachments, template selection, audit history, or cancellation/clone/reissue lineage.
+- Configure an annual rule and confirm the displayed renewal and Draft dates use Asia/Bangkok calendar dates and `renewalDate - leadDays`; check a February 29 rule in a non-leap year resolves to February 28.
+- Create an active schedule due today, run two `npm run recurring-pr:process` commands concurrently, and confirm exactly one run and one `DRAFT` for that schedule/year.
+- Confirm the generated PR has `status = DRAFT`, `prNo = null`, the responsible active user as creator, worker-date document date, renewal-date required date, preserved item row types, and a run/schedule trace link. Confirm no Carbone render, controlled PDF, running-number allocation, or external notification occurs.
+- Set an active schedule due yesterday and run the worker; confirm catch-up creates its one annual Draft and advances the next run date.
+- Make a required reference or responsible user inactive, process the due schedule, and confirm one safe `FAILED` run, no Draft, derived `Needs attention`, and a System audit actor. Correct the data, use authorized Retry, and confirm the same run becomes `SUCCEEDED` with one Draft.
+- Confirm a paused schedule is not processed. Confirm `Needs attention` is derived rather than stored as a third schedule status.
+- Run the documented Ubuntu minimal-environment manual command and inspect `/var/log/it-pr-dms/recurring-pr.log`; confirm one safe JSON line and expected exit code (`0`, `2`, or `1`). Confirm the cron path uses `CRON_TZ=Asia/Bangkok` and `flock -n`.
 
 ## Authentication Smoke Test
 
