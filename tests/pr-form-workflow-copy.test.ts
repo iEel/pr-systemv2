@@ -14,7 +14,7 @@ describe("PR form workflow copy", () => {
   });
 
   test("gives item description more table space than short numeric fields", () => {
-    const source = readFileSync("components/pr/PRForm.tsx", "utf8");
+    const source = readFileSync("components/pr/PRItemEditor.tsx", "utf8");
 
     expect(source).toContain('table className="min-w-[860px] w-full table-fixed border-collapse"');
     expect(source).toContain("<colgroup>");
@@ -59,10 +59,10 @@ describe("PR form workflow copy", () => {
   });
 
   test("supports item, heading, and detail row modes in the PR item table", () => {
-    const source = readFileSync("components/pr/PRForm.tsx", "utf8");
+    const source = readFileSync("components/pr/PRItemEditor.tsx", "utf8");
 
     expect(source).toContain("rowType");
-    expect(source).toContain('name="itemRowType"');
+    expect(source).toContain('rowType: "itemRowType"');
     expect(source).toContain("หัวข้อ");
     expect(source).toContain("รายละเอียด");
     expect(source).toContain("รายการ");
