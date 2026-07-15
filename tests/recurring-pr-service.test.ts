@@ -22,10 +22,12 @@ import {
 
 function scheduleRecord({
   id,
+  nextRunDate = new Date("2026-08-14T00:00:00.000Z"),
   status = "ACTIVE",
   runs = [],
 }: {
   id: string;
+  nextRunDate?: Date;
   status?: "ACTIVE" | "PAUSED";
   runs?: any[];
 }) {
@@ -37,7 +39,7 @@ function scheduleRecord({
     id,
     leadDays: 30,
     name: `Schedule ${id}`,
-    nextRunDate: new Date("2026-08-14T00:00:00.000Z"),
+    nextRunDate,
     renewalDay: 13,
     renewalMonth: 9,
     responsibleUser: { displayName: "Ari", id: "user_ari", isActive: true },
@@ -104,7 +106,7 @@ describe("recurring schedule read models", () => {
     expect(page.rows.map((row) => row.id)).toEqual(expectedIds);
   });
 
-  test("uses Bangkok date-only arithmetic for upcoming cutoffs", async () => {
+  test("uses inclusive Bangkok date-only boundaries for upcoming filters", async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     mocks.prisma.recurringPurchaseRequestSchedule = { findMany };
 
@@ -112,9 +114,46 @@ describe("recurring schedule read models", () => {
 
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ nextRunDate: { lte: new Date("2026-08-14T00:00:00.000Z") } }),
+        where: expect.objectContaining({ nextRunDate: { gte: new Date("2026-07-15T00:00:00.000Z"), lte: new Date("2026-08-14T00:00:00.000Z") }, status: "ACTIVE" }),
       }),
     );
+  });
+
+  test("excludes overdue, paused, and needs-attention schedules from the server-derived upcoming view", async () => {
+    mocks.prisma.recurringPurchaseRequestSchedule = {
+      findMany: vi.fn().mockResolvedValue([
+        scheduleRecord({ id: "overdue", nextRunDate: new Date("2026-07-14T00:00:00.000Z") }),
+        scheduleRecord({ id: "today", nextRunDate: new Date("2026-07-15T00:00:00.000Z") }),
+        scheduleRecord({ id: "edge", nextRunDate: new Date("2026-08-14T00:00:00.000Z") }),
+        scheduleRecord({ id: "after", nextRunDate: new Date("2026-08-15T00:00:00.000Z") }),
+        scheduleRecord({ id: "paused", nextRunDate: new Date("2026-07-16T00:00:00.000Z"), status: "PAUSED" }),
+        scheduleRecord({ id: "attention", nextRunDate: new Date("2026-07-16T00:00:00.000Z"), runs: [{ startedAt: new Date("2026-07-15T00:00:00.000Z"), status: "FAILED" }] }),
+      ]),
+    };
+
+    const page = await getRecurringSchedulePageData({ upcoming: "30" }, "user_viewer", { now: new Date("2026-07-14T17:30:00.000Z") });
+
+    expect(page.rows.map((row) => row.id)).toEqual(["today", "edge"]);
+    expect(page.summary).toEqual({ active: 2, needsAttention: 0, paused: 0, upcoming: 2 });
+  });
+
+  test("marks only active schedules in the current 30-day Bangkok window as upcoming", async () => {
+    mocks.prisma.recurringPurchaseRequestSchedule = {
+      findMany: vi.fn().mockResolvedValue([
+        scheduleRecord({ id: "today", nextRunDate: new Date("2026-07-15T00:00:00.000Z") }),
+        scheduleRecord({ id: "overdue", nextRunDate: new Date("2026-07-14T00:00:00.000Z") }),
+        scheduleRecord({ id: "paused", nextRunDate: new Date("2026-07-16T00:00:00.000Z"), status: "PAUSED" }),
+      ]),
+    };
+
+    const page = await getRecurringSchedulePageData({}, "user_viewer", { now: new Date("2026-07-14T17:30:00.000Z") });
+
+    expect(page.rows.map((row) => ({ id: row.id, isUpcoming: row.isUpcoming }))).toEqual([
+      { id: "today", isUpcoming: true },
+      { id: "overdue", isUpcoming: false },
+      { id: "paused", isUpcoming: false },
+    ]);
+    expect(page.summary.upcoming).toBe(1);
   });
 
   test("keeps the latest run result and independently links the latest generated Draft", async () => {

@@ -10,7 +10,7 @@ export const metadata = { description: "Monitor annual schedules in the Needs at
 export default async function RecurringPRPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireCurrentUser();
   const params = searchParams ? await searchParams : {};
-  const [{ filters, rows }, options] = await Promise.all([getRecurringSchedulePageData(params), getRecurringScheduleOptions()]);
+  const [{ filters, rows, summary }, options] = await Promise.all([getRecurringSchedulePageData(params), getRecurringScheduleOptions()]);
 
-  return <AppFrame><RecurringScheduleList canManage={hasPermission(user.role, "PR_RECURRING_MANAGE")} filters={filters} options={options} rows={rows} /></AppFrame>;
+  return <AppFrame><RecurringScheduleList canManage={hasPermission(user.role, "PR_RECURRING_MANAGE")} filters={filters} options={options} rows={rows} summary={summary} /></AppFrame>;
 }

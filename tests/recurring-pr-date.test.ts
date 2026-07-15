@@ -3,6 +3,7 @@ import {
   buildAnnualOccurrence,
   calculateNextAnnualOccurrence,
   chooseInitialOccurrenceYear,
+  getRenewalPreview,
   toBangkokDateOnly,
 } from "../lib/recurring-pr-date";
 
@@ -48,5 +49,17 @@ describe("annual recurring PR dates", () => {
     expect(next.occurrenceYear).toBe(2027);
     expect(next.renewalDate.toISOString()).toBe("2027-01-15T00:00:00.000Z");
     expect(next.scheduledDraftDate.toISOString()).toBe("2026-12-16T00:00:00.000Z");
+  });
+
+  test("reports an invalid preview instead of normalizing a 31st into the following month", () => {
+    expect(getRenewalPreview({ leadDays: 30, renewalDay: 31, renewalMonth: 4, today: "2026-07-15" })).toEqual({ valid: false, maximumDay: 30 });
+  });
+
+  test("keeps February 29 valid for an annual rule and calculates the appropriate initial occurrence", () => {
+    expect(getRenewalPreview({ leadDays: 30, renewalDay: 29, renewalMonth: 2, today: "2027-01-01" })).toMatchObject({
+      valid: true,
+      maximumDay: 29,
+      occurrence: { occurrenceYear: 2027, renewalDate: new Date("2027-02-28T00:00:00.000Z") },
+    });
   });
 });

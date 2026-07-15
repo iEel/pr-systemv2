@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { requirePermission } from "./auth/current-user";
+import { createCategoryDeactivationConfirmation as createConfirmation, verifyCategoryDeactivationConfirmation } from "./category-deactivation-confirmation.server";
 import { prisma } from "./prisma";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -46,6 +47,8 @@ export type PrCategoryRow = {
   status: "Active" | "Inactive";
   updatedAt: string;
 };
+
+export const createCategoryDeactivationConfirmation = createConfirmation;
 
 function searchValue(params: SearchParams | undefined, key: string) {
   const value = params?.[key];
@@ -322,6 +325,8 @@ export async function updatePrCategoryFromFormData(formData: FormData) {
 export async function setPrCategoryActiveFromFormData(formData: FormData, isActive: boolean) {
   const actor = await requirePermission("MASTER_DATA_MANAGE");
   const categoryId = requiredCategoryId(formData.get("categoryId"));
+  const confirmationToken = String(formData.get("confirmationToken") || "");
+  const intendedIsActive = String(formData.get("intendedIsActive") || "");
 
   return prisma.$transaction(
     async (tx) => {
@@ -338,6 +343,13 @@ export async function setPrCategoryActiveFromFormData(formData: FormData, isActi
             select: { id: true },
             where: { categoryId, status: "ACTIVE" },
           });
+      if (!isActive && (intendedIsActive !== "0" || !verifyCategoryDeactivationConfirmation({
+        categoryId,
+        scheduleIds: affectedSchedules.map((schedule) => schedule.id),
+        token: confirmationToken,
+      }))) {
+        throw new Error("Category deactivation confirmation is invalid or expired");
+      }
       const updated = await tx.purchaseRequestCategory.update({ data: { isActive }, where: { id: categoryId } });
 
       await createCategoryAudit(tx, {

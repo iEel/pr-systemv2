@@ -7,7 +7,7 @@ import { TableWrap, tableCellClass, tableHeaderClass } from "@/components/ui/Tab
 import type { RecurringScheduleFilters, RecurringScheduleOptions, RecurringScheduleRow } from "@/lib/recurring-pr";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
-type Props = { canManage: boolean; filters: RecurringScheduleFilters; options: RecurringScheduleOptions; rows: RecurringScheduleRow[] };
+type Props = { canManage: boolean; filters: RecurringScheduleFilters; options: RecurringScheduleOptions; rows: RecurringScheduleRow[]; summary: { active: number; needsAttention: number; paused: number; upcoming: number } };
 
 function buildHref(filters: Partial<RecurringScheduleFilters> = {}) {
   const params = new URLSearchParams();
@@ -24,13 +24,7 @@ function statusTone(status: RecurringScheduleRow["status"]) {
   return status === "ACTIVE" ? "active" : status === "PAUSED" ? "neutral" : "warning";
 }
 
-export function RecurringScheduleList({ canManage, filters, options, rows }: Props) {
-  const counts = {
-    active: rows.filter((row) => row.status === "ACTIVE").length,
-    attention: rows.filter((row) => row.status === "NEEDS_ATTENTION").length,
-    paused: rows.filter((row) => row.status === "PAUSED").length,
-    upcoming: rows.filter((row) => new Date(row.nextRunDate).getTime() <= Date.now() + 30 * 86400000).length,
-  };
+export function RecurringScheduleList({ canManage, filters, options, rows, summary }: Props) {
 
   return (
     <div className="space-y-5">
@@ -43,7 +37,7 @@ export function RecurringScheduleList({ canManage, filters, options, rows }: Pro
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Schedule summary">
-        {[["Active", counts.active], ["Upcoming", counts.upcoming], ["Needs attention", counts.attention], ["Paused", counts.paused]].map(([label, count]) => (
+        {[["Active", summary.active], ["Upcoming", summary.upcoming], ["Needs attention", summary.needsAttention], ["Paused", summary.paused]].map(([label, count]) => (
           <div className="rounded-md border border-border bg-panel px-4 py-3" key={String(label)}><div className="text-sm font-semibold text-muted">{label}</div><div className="mt-1 text-lg font-bold tabular-nums text-ink">{count}</div></div>
         ))}
       </div>
@@ -60,7 +54,7 @@ export function RecurringScheduleList({ canManage, filters, options, rows }: Pro
       <TableWrap>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1180px] border-collapse">
-            <thead><tr>{["Schedule", "Category", "Renewal", "Lead", "Responsible", "Next Draft", "Last Run", "Status", "Actions"].map((head) => <th className={`${tableHeaderClass} px-4 py-3`} key={head}>{head}</th>)}</tr></thead>
+            <thead><tr>{["Schedule", "Category", "Renewal", "Lead", "Responsible", "Next Draft", "Last Run", "Status", "Actions"].map((head) => <th className={`${tableHeaderClass} ${head === "Actions" ? "sticky right-0 z-20 bg-slate-50" : ""} px-4 py-3`} key={head}>{head}</th>)}</tr></thead>
             <tbody>{rows.length ? rows.map((row) => (
               <tr className="align-top hover:bg-slate-50" key={row.id}>
                 <td className={`${tableCellClass} min-w-56`}><Link className="font-bold text-primary hover:underline" href={`/recurring-pr/${row.id}`}>{row.name}</Link>{row.sourcePurchaseRequest ? <div className="mt-1 text-xs font-semibold text-muted">Source: {row.sourcePurchaseRequest.label}</div> : null}</td>
@@ -71,7 +65,7 @@ export function RecurringScheduleList({ canManage, filters, options, rows }: Pro
                 <td className={`${tableCellClass} whitespace-nowrap font-semibold`}>{formatDate(row.nextRunDate)}</td>
                 <td className={`${tableCellClass} min-w-40 text-xs text-muted`}>{row.lastRun ? `${row.lastRun.status} · ${formatDateTime(row.lastRun.occurredAt)}` : "Not run yet"}</td>
                 <td className={tableCellClass}><Badge tone={statusTone(row.status)}>{row.status === "NEEDS_ATTENTION" ? "Needs attention" : row.status}</Badge></td>
-                <td className={`${tableCellClass} sticky right-0 min-w-28 bg-panel`}><div className="flex flex-wrap gap-2"><Link className="inline-flex min-h-9 items-center justify-center rounded-md px-3 text-xs font-semibold text-ink hover:bg-surface" href={`/recurring-pr/${row.id}`}>View</Link>{canManage ? <Link aria-label={`Edit ${row.name}`} className="inline-flex min-h-9 items-center justify-center rounded-md px-3 text-xs font-semibold text-ink hover:bg-surface" href={`/recurring-pr/${row.id}/edit`}><Pencil aria-hidden className="h-4 w-4" /></Link> : null}</div></td>
+                <td className={`${tableCellClass} sticky right-0 z-10 min-w-28 bg-panel`}><div className="flex flex-wrap gap-2"><Link className="inline-flex min-h-9 items-center justify-center rounded-md px-3 text-xs font-semibold text-ink hover:bg-surface" href={`/recurring-pr/${row.id}`}>View</Link>{canManage ? <Link aria-label={`Edit ${row.name}`} className="inline-flex min-h-9 items-center justify-center rounded-md px-3 text-xs font-semibold text-ink hover:bg-surface" href={`/recurring-pr/${row.id}/edit`}><Pencil aria-hidden className="h-4 w-4" /></Link> : null}</div></td>
               </tr>
             )) : <tr><td className="px-4 py-12 text-center" colSpan={9}><CalendarClock aria-hidden className="mx-auto h-5 w-5 text-muted" /><div className="mt-3 text-sm font-bold text-ink">No recurring schedules match this view</div><p className="mt-1 text-sm text-muted">Adjust filters or create a schedule from an existing PR.</p></td></tr>}</tbody>
           </table>

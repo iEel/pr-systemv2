@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { beforeEach, expect, test, vi } from "vitest";
+import { DraftValidationError } from "../lib/pr-draft";
 
 const mocks = vi.hoisted(() => ({
   createRecurringScheduleFromFormData: vi.fn(),
@@ -46,8 +47,8 @@ test("recurring schedule actions delegate each supported mutation and refresh sc
 test("recurring schedule actions delegate arguments, refresh collection/detail, and redirect", async () => {
   const formData = new FormData();
 
-  await createRecurringScheduleAction("pr_source", formData);
-  await updateRecurringScheduleAction("schedule_1", formData);
+  await createRecurringScheduleAction("pr_source", { fieldErrors: {}, message: null }, formData);
+  await updateRecurringScheduleAction("schedule_1", { fieldErrors: {}, message: null }, formData);
   await pauseRecurringScheduleAction("schedule_1");
   await resumeRecurringScheduleAction("schedule_1");
 
@@ -60,4 +61,15 @@ test("recurring schedule actions delegate arguments, refresh collection/detail, 
   expect(mocks.revalidatePath).toHaveBeenCalledWith("/recurring-pr/schedule_1");
   expect(mocks.redirect).toHaveBeenCalledTimes(4);
   expect(mocks.redirect).toHaveBeenCalledWith("/recurring-pr/schedule_1");
+});
+
+test("returns expected recurring validation errors as field feedback instead of throwing a framework error", async () => {
+  mocks.createRecurringScheduleFromFormData.mockRejectedValueOnce(new DraftValidationError({ categoryId: "หมวดหมู่ PR ไม่พร้อมใช้งาน" }));
+  const result = await createRecurringScheduleAction("pr_source", { fieldErrors: {}, message: null }, new FormData());
+
+  expect(result).toEqual({
+    fieldErrors: { categoryId: "หมวดหมู่ PR ไม่พร้อมใช้งาน" },
+    message: "Please review the highlighted schedule fields.",
+  });
+  expect(mocks.redirect).not.toHaveBeenCalled();
 });

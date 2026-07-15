@@ -19,6 +19,7 @@ vi.mock("../lib/prisma", () => ({
 
 import {
   buildPrCategoryHref,
+  createCategoryDeactivationConfirmation,
   getPrCategoryDeactivationImpact,
   mapPrCategoryRecordToRow,
   normalizePrCategoryFilters,
@@ -148,7 +149,7 @@ describe("PR category master", () => {
     });
   });
 
-  test("re-queries active schedules inside category deactivation and audits their ids", async () => {
+  test("rejects an unconfirmed category deactivation before it can write", async () => {
     const category = { code: "HARDWARE", id: "cat_hardware", name: "Hardware" };
     const tx = {
       auditLog: { create: vi.fn().mockResolvedValue({ id: "audit_1" }) },
@@ -164,18 +165,53 @@ describe("PR category master", () => {
     const formData = new FormData();
     formData.set("categoryId", category.id);
 
+    await expect(setPrCategoryActiveFromFormData(formData, false)).rejects.toThrow("confirmation");
+    expect(tx.purchaseRequestCategory.update).not.toHaveBeenCalled();
+  });
+
+  test("binds confirmation to category, expiry, and the active schedule snapshot", async () => {
+    const category = { code: "HARDWARE", id: "cat_hardware", name: "Hardware" };
+    const tx = {
+      auditLog: { create: vi.fn() },
+      purchaseRequestCategory: { findUnique: vi.fn().mockResolvedValue(category), update: vi.fn() },
+      recurringPurchaseRequestSchedule: { findMany: vi.fn().mockResolvedValue([{ id: "schedule_a" }]) },
+    };
+    mocks.prisma.$transaction.mockImplementation(async (callback: (txArg: typeof tx) => unknown) => callback(tx));
+    const token = createCategoryDeactivationConfirmation({ categoryId: category.id, scheduleIds: ["schedule_a"], now: new Date("2026-07-15T00:00:00.000Z") });
+
+    for (const [categoryId, confirmationToken] of [["cat_other", token], [category.id, `${token}tampered`], [category.id, createCategoryDeactivationConfirmation({ categoryId: category.id, scheduleIds: ["schedule_a"], now: new Date("2026-07-15T00:00:00.000Z"), ttlMs: 1 })]] as const) {
+      const formData = new FormData();
+      formData.set("categoryId", categoryId);
+      formData.set("intendedIsActive", "0");
+      formData.set("confirmationToken", confirmationToken);
+      await expect(setPrCategoryActiveFromFormData(formData, false)).rejects.toThrow("confirmation");
+    }
+
+    tx.recurringPurchaseRequestSchedule.findMany.mockResolvedValue([{ id: "schedule_a" }, { id: "schedule_b" }]);
+    const staleForm = new FormData();
+    staleForm.set("categoryId", category.id);
+    staleForm.set("intendedIsActive", "0");
+    staleForm.set("confirmationToken", token);
+    await expect(setPrCategoryActiveFromFormData(staleForm, false)).rejects.toThrow("confirmation");
+    expect(tx.purchaseRequestCategory.update).not.toHaveBeenCalled();
+  });
+
+  test("re-queries active schedules in the transaction before accepting a matching confirmation", async () => {
+    const category = { code: "HARDWARE", id: "cat_hardware", name: "Hardware" };
+    const tx = {
+      auditLog: { create: vi.fn().mockResolvedValue({ id: "audit_1" }) },
+      purchaseRequestCategory: { findUnique: vi.fn().mockResolvedValue(category), update: vi.fn().mockResolvedValue({ ...category, isActive: false }) },
+      recurringPurchaseRequestSchedule: { findMany: vi.fn().mockResolvedValue([{ id: "schedule_a" }, { id: "schedule_b" }]) },
+    };
+    mocks.prisma.$transaction.mockImplementation(async (callback: (txArg: typeof tx) => unknown) => callback(tx));
+    const formData = new FormData();
+    formData.set("categoryId", category.id);
+    formData.set("intendedIsActive", "0");
+    formData.set("confirmationToken", createCategoryDeactivationConfirmation({ categoryId: category.id, scheduleIds: ["schedule_a", "schedule_b"] }));
+
     await setPrCategoryActiveFromFormData(formData, false);
 
-    expect(tx.recurringPurchaseRequestSchedule.findMany).toHaveBeenCalledWith({
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      select: { id: true },
-      where: { categoryId: category.id, status: "ACTIVE" },
-    });
-    expect(tx.auditLog.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        action: "PR category deactivated",
-        metadataJson: expect.stringContaining('"affectedScheduleIds":["schedule_a","schedule_b"]'),
-      }),
-    });
+    expect(tx.recurringPurchaseRequestSchedule.findMany).toHaveBeenCalledWith({ orderBy: [{ name: "asc" }, { id: "asc" }], select: { id: true }, where: { categoryId: category.id, status: "ACTIVE" } });
+    expect(tx.purchaseRequestCategory.update).toHaveBeenCalledWith({ data: { isActive: false }, where: { id: category.id } });
   });
 });

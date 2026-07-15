@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, SectionHeader } from "@/components/ui/Card";
 import { inputClass } from "@/components/ui/Field";
 import { TableWrap, tableCellClass, tableHeaderClass } from "@/components/ui/Table";
-import { buildPrCategoryHref, getPrCategoryDeactivationImpact, getPrCategoryPageData, type PrCategoryFilters, type PrCategoryRow } from "@/lib/pr-category-master";
+import { buildPrCategoryHref, createCategoryDeactivationConfirmation, getPrCategoryDeactivationImpact, getPrCategoryPageData, type PrCategoryFilters, type PrCategoryRow } from "@/lib/pr-category-master";
 import { createPrCategoryAction, setPrCategoryActiveAction, updatePrCategoryAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -152,7 +152,7 @@ function categoryRow({ filters, row }: { filters: PrCategoryFilters; row: PrCate
   );
 }
 
-function deactivationImpactPanel({ filters, impact }: { filters: PrCategoryFilters; impact: Awaited<ReturnType<typeof getPrCategoryDeactivationImpact>> }) {
+function deactivationImpactPanel({ confirmationToken, filters, impact }: { confirmationToken: string; filters: PrCategoryFilters; impact: Awaited<ReturnType<typeof getPrCategoryDeactivationImpact>> }) {
   return (
     <section className="rounded-lg border border-amber-200 bg-amber-50 p-5" aria-labelledby="category-deactivation-impact">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -168,6 +168,7 @@ function deactivationImpactPanel({ filters, impact }: { filters: PrCategoryFilte
           {redirectInputs(filters)}
           <input name="categoryId" type="hidden" value={impact.category.id} />
           <input name="intendedIsActive" type="hidden" value="0" />
+          <input name="confirmationToken" type="hidden" value={confirmationToken} />
           <Button type="submit" variant="danger"><Power aria-hidden className="h-4 w-4" />Confirm Deactivate</Button>
         </form>
         <Link className="inline-flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-ink hover:bg-white/70" href={buildPrCategoryHref(filters)}>Cancel</Link>
@@ -229,7 +230,7 @@ export default async function PrCategoriesPage({
           }
         />
         <MasterDataNav />
-        {impact ? deactivationImpactPanel({ filters, impact }) : null}
+        {impact ? deactivationImpactPanel({ confirmationToken: createCategoryDeactivationConfirmation({ categoryId: impact.category.id, scheduleIds: impact.activeSchedules.map((schedule) => schedule.id) }), filters, impact }) : null}
         {filterForm({ filters })}
         {createCategoryForm({ filters })}
         {categoryTable({ filters, rows })}

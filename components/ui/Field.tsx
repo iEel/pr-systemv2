@@ -5,7 +5,7 @@ export function Field({ label, error, children }: { label: string; error?: strin
     <label className="grid gap-1.5 text-sm font-semibold text-ink">
       <span>{label}</span>
       {children}
-      {error ? <span className="text-xs font-semibold text-red-700">{error}</span> : null}
+      {error ? <span className="text-xs font-semibold text-red-700" role="alert">{error}</span> : null}
     </label>
   );
 }

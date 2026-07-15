@@ -21,6 +21,7 @@ export type RecurringScheduleFilters = {
 export type RecurringScheduleRow = {
   category: { id: string; label: string };
   id: string;
+  isUpcoming: boolean;
   lastRun: { status: string; occurredAt: string } | null;
   latestGeneratedDraft: { id: string; label: string } | null;
   leadDays: number;
@@ -167,10 +168,11 @@ function bangkokDateOnlyToUtcDate(value: string) {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-function upcomingCutoff(now: Date, days: number) {
-  const cutoff = bangkokDateOnlyToUtcDate(toBangkokDateOnly(now));
-  cutoff.setUTCDate(cutoff.getUTCDate() + days);
-  return cutoff;
+function upcomingWindow(now: Date, days: number) {
+  const start = bangkokDateOnlyToUtcDate(toBangkokDateOnly(now));
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + days);
+  return { end, start };
 }
 
 function recurringScheduleItems(items: RecurringScheduleItemInput[]) {
@@ -280,6 +282,7 @@ function mapRecurringScheduleRecordToRow(record: any, latestGeneratedRun?: any):
   return {
     category: { id: record.category.id, label: `${record.category.code} - ${record.category.name}` },
     id: record.id,
+    isUpcoming: false,
     lastRun: latestRun ? { occurredAt: isoDate(latestRun.startedAt), status: latestRun.status } : null,
     latestGeneratedDraft: generatedDraft ? { id: generatedDraft.id, label: generatedDraft.prNo || "Draft pending" } : null,
     leadDays: record.leadDays,
@@ -466,12 +469,14 @@ export async function getRecurringSchedulePageData(
 ) {
   const normalized = normalizeRecurringScheduleFilters(filters);
   const now = context.now || new Date();
-  const upcomingLimit = normalized.upcoming === "ALL" ? null : upcomingCutoff(now, Number(normalized.upcoming));
+  const selectedUpcomingWindow = normalized.upcoming === "ALL" ? null : upcomingWindow(now, Number(normalized.upcoming));
+  const defaultUpcomingWindow = upcomingWindow(now, 30);
+  const persistedStatus = selectedUpcomingWindow ? "ACTIVE" : normalized.status === "ACTIVE" || normalized.status === "PAUSED" ? normalized.status : null;
   const where = {
     ...(normalized.categoryId === "ALL" ? {} : { categoryId: normalized.categoryId }),
     ...(normalized.responsibleUserId === "ALL" ? {} : { responsibleUserId: normalized.responsibleUserId }),
-    ...(normalized.status === "ACTIVE" || normalized.status === "PAUSED" ? { status: normalized.status } : {}),
-    ...(upcomingLimit ? { nextRunDate: { lte: upcomingLimit } } : {}),
+    ...(persistedStatus ? { status: persistedStatus } : {}),
+    ...(selectedUpcomingWindow ? { nextRunDate: { gte: selectedUpcomingWindow.start, lte: selectedUpcomingWindow.end } } : {}),
     ...(normalized.q
       ? {
           OR: [
@@ -509,10 +514,26 @@ export async function getRecurringSchedulePageData(
     if (!latestGeneratedRunBySchedule.has(run.scheduleId)) latestGeneratedRunBySchedule.set(run.scheduleId, run);
   }
   const rows = records
-    .map((record) => mapRecurringScheduleRecordToRow(record, latestGeneratedRunBySchedule.get(record.id)))
-    .filter((row) => normalized.status === "ALL" || row.status === normalized.status);
+    .map((record) => {
+      const row = mapRecurringScheduleRecordToRow(record, latestGeneratedRunBySchedule.get(record.id));
+      const nextRunDate = new Date(row.nextRunDate);
+      return {
+        ...row,
+        isUpcoming: row.status === "ACTIVE" && nextRunDate >= defaultUpcomingWindow.start && nextRunDate <= defaultUpcomingWindow.end,
+      };
+    })
+    .filter((row) => (normalized.status === "ALL" || row.status === normalized.status) && (!selectedUpcomingWindow || row.isUpcoming));
 
-  return { filters: normalized, rows };
+  return {
+    filters: normalized,
+    rows,
+    summary: {
+      active: rows.filter((row) => row.status === "ACTIVE").length,
+      needsAttention: rows.filter((row) => row.status === "NEEDS_ATTENTION").length,
+      paused: rows.filter((row) => row.status === "PAUSED").length,
+      upcoming: rows.filter((row) => row.isUpcoming).length,
+    },
+  };
 }
 
 export async function getRecurringScheduleOptions(selectedResponsibleUserId?: string): Promise<RecurringScheduleOptions> {

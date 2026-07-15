@@ -22,6 +22,14 @@ type CalculateNextAnnualOccurrenceArgs = AnnualRule & {
   occurrenceYear: number;
 };
 
+export type RenewalPreview = { valid: false; maximumDay: number } | { valid: true; maximumDay: number; occurrence: AnnualOccurrence };
+
+function maximumRenewalDay(renewalMonth: number) {
+  return Number.isInteger(renewalMonth) && renewalMonth >= 1 && renewalMonth <= 12
+    ? new Date(Date.UTC(2024, renewalMonth, 0)).getUTCDate()
+    : 0;
+}
+
 export function toBangkokDateOnly(now: Date): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     day: "2-digit",
@@ -67,4 +75,13 @@ export function calculateNextAnnualOccurrence({
   ...rule
 }: CalculateNextAnnualOccurrenceArgs): AnnualOccurrence {
   return buildAnnualOccurrence({ ...rule, year: occurrenceYear + 1 });
+}
+
+export function getRenewalPreview({ leadDays, renewalDay, renewalMonth, today }: AnnualRule & { today: string }): RenewalPreview {
+  const maximumDay = maximumRenewalDay(renewalMonth);
+  if (!Number.isInteger(renewalDay) || renewalDay < 1 || renewalDay > maximumDay || !Number.isInteger(leadDays) || leadDays < 1 || leadDays > 365) {
+    return { valid: false, maximumDay };
+  }
+  const year = chooseInitialOccurrenceYear({ renewalDay, renewalMonth, today });
+  return { valid: true, maximumDay, occurrence: buildAnnualOccurrence({ leadDays, renewalDay, renewalMonth, year }) };
 }
