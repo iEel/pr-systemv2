@@ -24,10 +24,12 @@ sudo apt update
 sudo apt install -y nginx curl ca-certificates rsync logrotate
 ```
 
-Install Node.js LTS and PM2 using your server standard. Example:
+Install the supported system-wide Node.js LTS distribution so its executables are `/usr/local/bin/node` and `/usr/local/bin/npm`. Do not use a per-user nvm, Volta, or asdf installation for the application service user or cron. Verify the installation before continuing:
 
 ```bash
-npm install -g pm2
+sudo test -x /usr/local/bin/node
+sudo test -x /usr/local/bin/npm
+sudo /usr/local/bin/npm install -g pm2
 ```
 
 ## Directory Layout
@@ -39,6 +41,7 @@ Recommended:
 /var/www/it-pr-dms/releases/<build> - app release directories
 /var/www/it-pr-dms/shared/.env      - production secrets
 /var/lib/it-pr-dms/storage      - persistent document storage
+/var/lib/it-pr-dms/locks        - persistent recurring-worker locks
 /var/backups/it-pr-dms          - local backup staging
 /var/log/it-pr-dms              - PM2 app logs
 ```
@@ -46,7 +49,7 @@ Recommended:
 Create folders:
 
 ```bash
-sudo mkdir -p /var/www/it-pr-dms/releases /var/www/it-pr-dms/shared /var/lib/it-pr-dms/storage /var/backups/it-pr-dms /var/log/it-pr-dms
+sudo mkdir -p /var/www/it-pr-dms/releases /var/www/it-pr-dms/shared /var/lib/it-pr-dms/storage /var/lib/it-pr-dms/locks /var/backups/it-pr-dms /var/log/it-pr-dms
 sudo chown -R $USER:$USER /var/www/it-pr-dms /var/lib/it-pr-dms /var/backups/it-pr-dms /var/log/it-pr-dms
 ```
 
@@ -159,21 +162,39 @@ Browser checks:
 
 The recurring PR worker is a local cron command owned by the application service user (for example, `it-pr-dms`). It is not a PM2 process and has no public nginx route.
 
-Create the log directory and lock file once, granting the application service user access:
+Create the persistent log and lock directories once, granting the application service user access. Do not use `/var/lock`: it is normally cleared during Ubuntu reboots.
 
 ```bash
 sudo install -d -o it-pr-dms -g it-pr-dms /var/log/it-pr-dms
-sudo install -o it-pr-dms -g it-pr-dms -m 0644 /dev/null /var/lock/it-pr-dms-recurring.lock
+sudo install -d -o it-pr-dms -g it-pr-dms -m 0750 /var/lib/it-pr-dms/locks
 ```
 
 Install this crontab as the application service user with `crontab -e`:
 
 ```cron
 CRON_TZ=Asia/Bangkok
-0 1 * * * cd /var/www/it-pr-dms/current && /usr/bin/flock -n /var/lock/it-pr-dms-recurring.lock /usr/bin/npm run recurring-pr:process >> /var/log/it-pr-dms/recurring-pr.log 2>&1
+PATH=/usr/local/bin:/usr/bin:/bin
+0 1 * * * cd /var/www/it-pr-dms/current && /usr/bin/flock -n /var/lib/it-pr-dms/locks/recurring-pr.lock /var/www/it-pr-dms/current/node_modules/.bin/tsx /var/www/it-pr-dms/current/scripts/process-recurring-pr.ts >> /var/log/it-pr-dms/recurring-pr.log 2>&1
 ```
 
-`flock -n` makes the job single-run: a second invocation exits immediately while the active run retains the lock. The command loads the release `.env` through the `/var/www/it-pr-dms/current` symlink, writes one safe JSON result, and returns exit code `0` when every schedule is handled, `2` when an individual schedule fails, or `1` when the worker cannot start or complete. No raw errors, environment values, or secrets are logged by the CLI.
+The explicit `PATH` makes the local `tsx` shebang use the supported `/usr/local/bin/node`; the cron and manual commands use the same absolute local executable. `flock -n` makes the job single-run: a second invocation exits immediately while the active run retains the lock. The command loads the release `.env` through the `/var/www/it-pr-dms/current` symlink, writes one safe JSON result, and returns exit code `0` when every schedule is handled, `2` when an individual schedule fails, or `1` when the worker cannot start or complete. No raw errors, environment values, or secrets are logged by the CLI.
+
+Run this deployment smoke check as the application user; it uses a cron-like minimal environment and must print exactly one JSON line with exit code `0`, `2`, or `1`:
+
+```bash
+sudo -u it-pr-dms env -i HOME=/var/lib/it-pr-dms NODE_ENV=production PATH=/usr/local/bin:/usr/bin:/bin /bin/sh -lc 'cd /var/www/it-pr-dms/current && /var/www/it-pr-dms/current/node_modules/.bin/tsx /var/www/it-pr-dms/current/scripts/process-recurring-pr.ts'
+```
+
+Verify lock concurrency before enabling cron. The second command must exit nonzero while the first holder is running:
+
+```bash
+sudo -u it-pr-dms /usr/bin/flock -n /var/lib/it-pr-dms/locks/recurring-pr.lock /bin/sh -c 'sleep 15' &
+holder_pid=$!
+sleep 1
+sudo -u it-pr-dms /usr/bin/flock -n /var/lib/it-pr-dms/locks/recurring-pr.lock /bin/true
+test $? -ne 0
+wait "$holder_pid"
+```
 
 Configure logrotate for `/var/log/it-pr-dms/recurring-pr.log`; use the retention period in `RETENTION_POLICY.md`:
 

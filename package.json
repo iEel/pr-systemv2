@@ -14,7 +14,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "recurring-pr:process": "tsx scripts/process-recurring-pr.ts"
+    "recurring-pr:process": "./node_modules/.bin/tsx scripts/process-recurring-pr.ts"
   },
   "dependencies": {
     "@prisma/adapter-mssql": "6.19.3",
