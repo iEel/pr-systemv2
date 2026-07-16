@@ -19,7 +19,29 @@ export type BudgetPlanningPageData = BudgetPlanningViewModel & {
 export async function getBudgetPlanningPageData(
   input: BudgetPlanningFiltersInput = {},
 ): Promise<BudgetPlanningPageData> {
-  const filters = normalizeBudgetPlanningFilters(input);
+  const requestedFilters = normalizeBudgetPlanningFilters(input);
+  const [companyRecords, categoryRecords] = await Promise.all([
+    prisma.company.findMany({
+      orderBy: { displayName: "asc" },
+      select: { displayName: true, id: true, isActive: true },
+      where: requestedFilters.companyId === "All"
+        ? { isActive: true }
+        : { OR: [{ isActive: true }, { id: requestedFilters.companyId }] },
+    }),
+    prisma.purchaseRequestCategory.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { code: true, id: true, isActive: true, name: true },
+    }),
+  ]);
+  const filters = {
+    ...requestedFilters,
+    companyId: requestedFilters.companyId === "All" || companyRecords.some(({ id }) => id === requestedFilters.companyId)
+      ? requestedFilters.companyId
+      : "All",
+    categoryId: requestedFilters.categoryId === "All" || categoryRecords.some(({ id }) => id === requestedFilters.categoryId)
+      ? requestedFilters.categoryId
+      : "All",
+  };
   const dateRange = buildBudgetPlanningDateRange(filters.baseYear);
   const actualQuery = {
     include: {
@@ -62,25 +84,19 @@ export async function getBudgetPlanningPageData(
     },
   } satisfies Prisma.RecurringPurchaseRequestScheduleFindManyArgs;
 
-  const [actualRecords, recurringRecords, companyRecords, categoryRecords] = await Promise.all([
+  const [actualRecords, recurringRecords] = await Promise.all([
     prisma.purchaseRequest.findMany(actualQuery),
     prisma.recurringPurchaseRequestSchedule.findMany(recurringQuery),
-    prisma.company.findMany({
-      orderBy: { displayName: "asc" },
-      select: { displayName: true, id: true },
-      where: { isActive: true },
-    }),
-    prisma.purchaseRequestCategory.findMany({
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: { code: true, id: true, isActive: true, name: true },
-    }),
   ]);
 
   return {
     ...buildBudgetPlanningViewModel({ actualRecords, filters, recurringRecords }),
     companies: [
       { label: "ทุกบริษัท", value: "All" },
-      ...companyRecords.map((company) => ({ label: company.displayName, value: company.id })),
+      ...companyRecords.map((company) => ({
+        label: `${company.displayName}${company.isActive ? "" : " (Inactive)"}`,
+        value: company.id,
+      })),
     ],
     categories: [
       { label: "ทุกหมวดหมู่", value: "All" },

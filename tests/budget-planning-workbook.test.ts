@@ -16,7 +16,7 @@ const data: BudgetPlanningPageData = {
   filters: { baseYear: 2025, forecastYear: 2026, companyId: "company-1", categoryId: "category-1" },
   companies: [
     { label: "All companies", value: "All" },
-    { label: "Acme Thailand", value: "company-1" },
+    { label: "Acme Thailand (Inactive)", value: "company-1" },
   ],
   categories: [
     { label: "All categories", value: "All" },
@@ -91,7 +91,7 @@ describe("budget planning workbook mapping", () => {
     expect(summary.rows).toEqual([
       ["Base Year", 2025],
       ["Forecast Year", 2026],
-      ["Company Filter", "Acme Thailand"],
+      ["Company Filter", "Acme Thailand (Inactive)"],
       ["Category Filter", "IT - Technology (Inactive)"],
       ["Exported At", "2026-01-02T03:04:05.000Z"],
       ["Actual Spend", 1500],

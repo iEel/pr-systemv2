@@ -115,4 +115,26 @@ describe("budget planning export route", () => {
     expect(mocks.buildBudgetPlanningWorkbookSheets).not.toHaveBeenCalled();
     expect(mocks.buildXlsxWorkbook).not.toHaveBeenCalled();
   });
+
+  test("propagates loader failures without mapping or building a workbook", async () => {
+    const loaderError = new Error("database unavailable");
+    mocks.getBudgetPlanningPageData.mockRejectedValue(loaderError);
+
+    await expect(GET(new Request("http://localhost/dashboard/budget-planning/export?year=2031"))).rejects.toBe(loaderError);
+
+    expect(mocks.getBudgetPlanningPageData).toHaveBeenCalledTimes(1);
+    expect(mocks.buildBudgetPlanningWorkbookSheets).not.toHaveBeenCalled();
+    expect(mocks.buildXlsxWorkbook).not.toHaveBeenCalled();
+  });
+
+  test("propagates workbook builder failures after loading and mapping once", async () => {
+    const builderError = new Error("xlsx serialization failed");
+    mocks.buildXlsxWorkbook.mockRejectedValue(builderError);
+
+    await expect(GET(new Request("http://localhost/dashboard/budget-planning/export?year=2031"))).rejects.toBe(builderError);
+
+    expect(mocks.getBudgetPlanningPageData).toHaveBeenCalledTimes(1);
+    expect(mocks.buildBudgetPlanningWorkbookSheets).toHaveBeenCalledTimes(1);
+    expect(mocks.buildXlsxWorkbook).toHaveBeenCalledTimes(1);
+  });
 });

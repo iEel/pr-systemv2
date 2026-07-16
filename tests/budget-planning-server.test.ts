@@ -36,6 +36,11 @@ beforeEach(() => {
 
 describe("getBudgetPlanningPageData", () => {
   test("normalizes raw filters once and applies them to both detail queries", async () => {
+    mocks.prisma.company.findMany.mockResolvedValue([
+      { displayName: "Alpha", id: "company_a", isActive: true },
+    ]);
+    mocks.prisma.purchaseRequestCategory.findMany.mockResolvedValue([category]);
+
     await getBudgetPlanningPageData({ categoryId: " category_it ", companyId: " company_a ", year: "2025" });
 
     expect(mocks.prisma.purchaseRequest.findMany).toHaveBeenCalledWith(
@@ -95,8 +100,8 @@ describe("getBudgetPlanningPageData", () => {
 
   test("builds company and category options from the loader results", async () => {
     mocks.prisma.company.findMany.mockResolvedValue([
-      { displayName: "Alpha", id: "company_a" },
-      { displayName: "Beta", id: "company_b" },
+      { displayName: "Alpha", id: "company_a", isActive: true },
+      { displayName: "Beta", id: "company_b", isActive: true },
     ]);
     mocks.prisma.purchaseRequestCategory.findMany.mockResolvedValue([
       { code: "IT", id: "category_it", isActive: true, name: "Technology" },
@@ -107,7 +112,7 @@ describe("getBudgetPlanningPageData", () => {
 
     expect(mocks.prisma.company.findMany).toHaveBeenCalledWith({
       orderBy: { displayName: "asc" },
-      select: { displayName: true, id: true },
+      select: { displayName: true, id: true, isActive: true },
       where: { isActive: true },
     });
     expect(result.companies).toEqual([
@@ -122,7 +127,79 @@ describe("getBudgetPlanningPageData", () => {
     ]);
   });
 
+  test("retains and labels a selected inactive company before querying details", async () => {
+    mocks.prisma.company.findMany.mockResolvedValue([
+      { displayName: "Archived Co", id: "company_old", isActive: false },
+      { displayName: "Alpha", id: "company_a", isActive: true },
+    ]);
+
+    const result = await getBudgetPlanningPageData({ companyId: "company_old", year: 2025 });
+
+    expect(mocks.prisma.company.findMany).toHaveBeenCalledWith({
+      orderBy: { displayName: "asc" },
+      select: { displayName: true, id: true, isActive: true },
+      where: { OR: [{ isActive: true }, { id: "company_old" }] },
+    });
+    expect(mocks.prisma.company.findMany.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.prisma.purchaseRequest.findMany.mock.invocationCallOrder[0],
+    );
+    expect(result.filters.companyId).toBe("company_old");
+    expect(result.companies).toContainEqual({ label: "Archived Co (Inactive)", value: "company_old" });
+    expect(mocks.prisma.purchaseRequest.findMany.mock.calls[0][0].where.companyId).toBe("company_old");
+    expect(mocks.prisma.recurringPurchaseRequestSchedule.findMany.mock.calls[0][0].where.companyId).toBe("company_old");
+  });
+
+  test("retains and labels a selected inactive category before querying details", async () => {
+    mocks.prisma.purchaseRequestCategory.findMany.mockResolvedValue([
+      { code: "OLD", id: "category_old", isActive: false, name: "Legacy" },
+    ]);
+
+    const result = await getBudgetPlanningPageData({ categoryId: "category_old", year: 2025 });
+
+    expect(mocks.prisma.purchaseRequestCategory.findMany.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.prisma.purchaseRequest.findMany.mock.invocationCallOrder[0],
+    );
+    expect(result.filters.categoryId).toBe("category_old");
+    expect(result.categories).toContainEqual({ label: "OLD - Legacy (Inactive)", value: "category_old" });
+    expect(mocks.prisma.purchaseRequest.findMany.mock.calls[0][0].where.categoryId).toBe("category_old");
+    expect(mocks.prisma.recurringPurchaseRequestSchedule.findMany.mock.calls[0][0].where.categoryId).toBe("category_old");
+  });
+
+  test("normalizes unknown company and category IDs to All before querying details", async () => {
+    mocks.prisma.company.findMany.mockResolvedValue([
+      { displayName: "Alpha", id: "company_a", isActive: true },
+    ]);
+    mocks.prisma.purchaseRequestCategory.findMany.mockResolvedValue([category]);
+
+    const result = await getBudgetPlanningPageData({
+      categoryId: "category_missing",
+      companyId: "company_missing",
+      year: 2025,
+    });
+
+    expect(result.filters).toEqual({
+      baseYear: 2025,
+      categoryId: "All",
+      companyId: "All",
+      forecastYear: 2026,
+    });
+    expect(mocks.prisma.purchaseRequest.findMany.mock.calls[0][0].where).toEqual({
+      documentDate: {
+        gte: new Date("2025-01-01T00:00:00.000Z"),
+        lt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+      status: { in: ["GENERATED", "PRINTED", "SIGNED"] },
+    });
+    expect(mocks.prisma.recurringPurchaseRequestSchedule.findMany.mock.calls[0][0].where).toEqual({ status: "ACTIVE" });
+    expect(result.companies[0]).toEqual({ label: "ทุกบริษัท", value: "All" });
+    expect(result.categories[0]).toEqual({ label: "ทุกหมวดหมู่", value: "All" });
+  });
+
   test("returns detail and no-uplift baseline from the shared view model", async () => {
+    mocks.prisma.company.findMany.mockResolvedValue([
+      { displayName: "Alpha", id: "company_a", isActive: true },
+    ]);
+    mocks.prisma.purchaseRequestCategory.findMany.mockResolvedValue([category]);
     mocks.prisma.purchaseRequest.findMany.mockResolvedValue([
       {
         branch: { name: "Bangkok" },
