@@ -204,6 +204,7 @@ async function createDraftForRun({ actorId, mode, occurrence: retryOccurrence, r
   return prisma.$transaction(async (tx) => {
     const schedule = await loadSchedule(scheduleId, tx);
     if (!schedule || (mode === "CRON" && schedule.status !== "ACTIVE")) return { outcome: "SKIPPED" as const };
+    if (mode === "CRON" && schedule.nextRunDate > today) return { outcome: "SKIPPED" as const };
     try {
       validateSchedule(schedule);
     } catch (error) {
@@ -213,7 +214,6 @@ async function createDraftForRun({ actorId, mode, occurrence: retryOccurrence, r
     }
 
     const occurrence = mode === "CRON" ? occurrenceForSchedule(schedule) : retryOccurrence!;
-    if (mode === "CRON" && schedule.nextRunDate > today) return { outcome: "SKIPPED" as const };
 
     let activeRunId = runId;
     if (mode === "CRON") {

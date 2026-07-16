@@ -227,6 +227,36 @@ test("skips without a run or Draft when an annual-rule edit moves nextRunDate in
   expect(tx.purchaseRequest.create).not.toHaveBeenCalled();
 });
 
+test("skips before validation side effects when a moved-future annual-rule edit also deactivates a reference", async () => {
+  const state = { currentSchedule: schedule() };
+  const tx = {
+    auditLog: { create: vi.fn() },
+    purchaseRequest: { create: vi.fn() },
+    recurringPurchaseRequestRun: { create: vi.fn().mockResolvedValue({ id: "run_should_not_exist" }), findUnique: vi.fn(), update: vi.fn() },
+    recurringPurchaseRequestSchedule: { findUnique: vi.fn().mockImplementation(() => state.currentSchedule), update: vi.fn() },
+  };
+  mocks.prisma.recurringPurchaseRequestSchedule = {
+    findUnique: vi.fn(async () => {
+      const outerSnapshot = structuredClone(state.currentSchedule);
+      state.currentSchedule = schedule({
+        category: { isActive: false },
+        nextRunDate: new Date("2026-09-01T00:00:00.000Z"),
+        renewalDay: 1,
+        renewalMonth: 10,
+      });
+      return outerSnapshot;
+    }),
+  };
+  mocks.prisma.recurringPurchaseRequestRun = { findUnique: vi.fn().mockResolvedValue(null) };
+  mocks.prisma.$transaction = vi.fn(async (work: (client: typeof tx) => unknown) => work(tx));
+
+  await expect(processRecurringScheduleOccurrence("schedule_1", new Date("2026-08-02T00:00:00.000Z"))).resolves.toEqual({ outcome: "SKIPPED", scheduleId: "schedule_1" });
+  expect(tx.recurringPurchaseRequestRun.create).not.toHaveBeenCalled();
+  expect(tx.recurringPurchaseRequestSchedule.update).not.toHaveBeenCalled();
+  expect(tx.purchaseRequest.create).not.toHaveBeenCalled();
+  expect(tx.auditLog.create).not.toHaveBeenCalled();
+});
+
 test("uses an edited but still-due annual rule for run, Draft, and next-run dates", async () => {
   const state = { currentSchedule: schedule() };
   const editedSchedule = schedule({
