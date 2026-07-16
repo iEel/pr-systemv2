@@ -193,10 +193,10 @@ async function persistValidationFailureInTransaction(tx: any, schedule: Schedule
   return { error, outcome: "FAILED" as const, runId: created.id };
 }
 
-async function createDraftForRun({ actorId, mode, occurrence, runId, scheduleId, today }: {
+async function createDraftForRun({ actorId, mode, occurrence: retryOccurrence, runId, scheduleId, today }: {
   actorId: string | null;
   mode: WorkerMode;
-  occurrence: ReturnType<typeof buildAnnualOccurrence>;
+  occurrence?: ReturnType<typeof buildAnnualOccurrence>;
   runId?: string;
   scheduleId: string;
   today: Date;
@@ -209,11 +209,30 @@ async function createDraftForRun({ actorId, mode, occurrence, runId, scheduleId,
     } catch (error) {
       const safeError = sanitizeRecurringError(error);
       if (mode === "RETRY") throw new RecurringRetryValidationError(safeError);
-      return persistValidationFailureInTransaction(tx, schedule, occurrence, safeError);
+      return persistValidationFailureInTransaction(tx, schedule, occurrenceForSchedule(schedule), safeError);
     }
+
+    const occurrence = mode === "CRON" ? occurrenceForSchedule(schedule) : retryOccurrence!;
+    if (mode === "CRON" && schedule.nextRunDate > today) return { outcome: "SKIPPED" as const };
 
     let activeRunId = runId;
     if (mode === "CRON") {
+      const existing = await tx.recurringPurchaseRequestRun.findUnique({
+        select: { id: true },
+        where: { scheduleId_occurrenceYear: { occurrenceYear: occurrence.occurrenceYear, scheduleId } },
+      });
+      if (existing) {
+        await tx.auditLog.create({
+          data: {
+            action: "Duplicate annual run skipped",
+            actorId: null,
+            entityId: schedule.id,
+            entityType: "RecurringPurchaseRequestSchedule",
+            metadataJson: auditMetadata(schedule, occurrence),
+          },
+        });
+        return { outcome: "SKIPPED" as const, runId: existing.id };
+      }
       const run = await tx.recurringPurchaseRequestRun.create({
         data: {
           occurrenceYear: occurrence.occurrenceYear,
@@ -297,23 +316,13 @@ async function createDraftForRun({ actorId, mode, occurrence, runId, scheduleId,
 export async function processRecurringScheduleOccurrence(scheduleId: string, today: Date, mode: WorkerMode = "CRON"): Promise<RecurringWorkerResult> {
   const schedule = await loadSchedule(scheduleId);
   if (!schedule || (mode === "CRON" && schedule.status !== "ACTIVE")) return { outcome: "SKIPPED", scheduleId };
-  const occurrence = occurrenceForSchedule(schedule);
-  if (mode === "CRON") {
-    const existing = await prisma.recurringPurchaseRequestRun.findUnique({
-      select: { id: true },
-      where: { scheduleId_occurrenceYear: { occurrenceYear: occurrence.occurrenceYear, scheduleId } },
-    });
-    if (existing) {
-      await recordDuplicateAnnualRunSkip(schedule, occurrence);
-      return { outcome: "SKIPPED", scheduleId, runId: existing.id };
-    }
-  }
   try {
-    const created = await createDraftForRun({ actorId: null, mode, occurrence, scheduleId, today });
+    const created = await createDraftForRun({ actorId: null, mode, scheduleId, today });
     return { scheduleId, ...created };
   } catch (error) {
     if (isUniqueViolation(error)) {
-      await recordDuplicateAnnualRunSkip(schedule, occurrence);
+      const currentSchedule = await loadSchedule(scheduleId);
+      if (currentSchedule) await recordDuplicateAnnualRunSkip(currentSchedule, occurrenceForSchedule(currentSchedule));
       return { outcome: "SKIPPED", scheduleId };
     }
     throw error;

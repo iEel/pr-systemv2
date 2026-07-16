@@ -13,6 +13,7 @@ Resolved the VAT snapshot, lifecycle/reference race, duplicate annual-run audit,
 3. After the first implementation pass, existing repository fixtures exposed the new transaction-local read boundary; fixtures were updated to model that real contract.
 4. Added the Retry preservation regression. Its focused run failed because the safe failed-run error was not updated; a typed retry-validation error path restored that existing behavior.
 5. Focused recurring/category verification then passed with 82 tests across 11 files.
+6. A final-review regression added deterministic annual-rule edits after the outer read: one moved `nextRunDate` into the future and one remained due with different renewal/scheduled dates. The new tests initially failed because the worker created/advanced the stale outer occurrence, then passed after moving CRON due, occurrence, and duplicate lookup decisions into the serializable transaction.
 
 ## Changes
 
@@ -21,13 +22,14 @@ Resolved the VAT snapshot, lifecycle/reference race, duplicate annual-run audit,
 - A schedule paused after the outer due read skips without a run or Draft. An inactive required reference found after that read persists one safe `FAILED` run, no Draft, schedule `lastRunAt`, and a System failure audit in the same transaction.
 - Existing and contention duplicate annual-run skips record the System action `Duplicate annual run skipped`.
 - Manual Retry retains its prior behavior of persisting the current sanitized validation error when refreshed references are invalid.
+- CRON recomputes the due condition and annual occurrence from the transaction-local schedule. A no-longer-due edit creates no run or Draft; an edited due rule supplies the persisted run, Draft required date, audit metadata, and next-run progression.
 - Operator/developer documentation now states one annual occurrence per due schedule per invocation and separates the earlier migration/live-smoke evidence from this code-only hardening.
 
 ## Verification
 
-- `npm test -- tests/recurring-pr-date.test.ts tests/recurring-pr-worker.test.ts tests/recurring-pr-worker-repository.test.ts tests/recurring-pr-service.test.ts tests/pr-category-master.test.ts tests/recurring-pr-cli-copy.test.ts tests/recurring-pr-schema.test.ts tests/recurring-pr-actions.test.ts tests/recurring-pr-form-behavior.test.ts tests/recurring-pr-page-copy.test.ts tests/category-deactivation-confirmation.test.ts` - 11 files, 82 tests passed.
+- `npm test -- tests/recurring-pr-worker-repository.test.ts tests/recurring-pr-worker.test.ts tests/pr-draft.test.ts tests/recurring-pr-date.test.ts tests/recurring-pr-cli-copy.test.ts tests/pr-category-master.test.ts tests/recurring-pr-service.test.ts` - 7 files, 77 tests passed.
 - `npm run typecheck` - passed.
-- `npm test` - 69 files, 400 tests passed.
+- `npm test` - 69 files, 402 tests passed.
 - `npx prisma validate` - schema valid.
 - `npm run build` - passed.
 - `git diff --check` - passed.
