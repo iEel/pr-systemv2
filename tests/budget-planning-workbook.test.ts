@@ -14,6 +14,7 @@ import { buildXlsxWorkbook } from "../lib/xlsx";
 
 const data: BudgetPlanningPageData = {
   filters: { baseYear: 2025, forecastYear: 2026, companyId: "company-1", categoryId: "category-1" },
+  baseYears: [{ label: "2025", value: "2025" }],
   companies: [
     { label: "All companies", value: "All" },
     { label: "Acme Thailand (Inactive)", value: "company-1" },

@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 
 const pageSource = readFileSync("app/dashboard/page.tsx", "utf8");
 const viewSource = readFileSync("components/dashboard/BudgetPlanningView.tsx", "utf8");
+const chartSource = readFileSync("components/dashboard/BudgetPlanningCategoryChart.tsx", "utf8");
 
 describe("dashboard budget planning page", () => {
   test("loads only the data required by the selected dashboard view", () => {
@@ -71,9 +72,30 @@ describe("dashboard budget planning page", () => {
       expect(viewSource).toContain(copy);
     }
     expect(viewSource).toMatch(/<input[^>]*name="view"[^>]*value="planning"/);
-    expect(viewSource).toContain('min="2000"');
-    expect(viewSource).toContain('max="2100"');
+    expect(viewSource).toContain('defaultValue={String(data.filters.baseYear)}');
+    expect(viewSource).toContain('name="year"');
+    expect(viewSource).toContain("data.baseYears.map");
+    expect(viewSource).toContain("<select");
+    expect(viewSource).not.toMatch(/<input[^>]*name="year"[^>]*type="number"/);
     expect(viewSource).toContain("buildBudgetPlanningExportHref(data.filters)");
+  });
+
+  test("renders the category comparison chart before the audit table", () => {
+    expect(viewSource).toContain("<BudgetPlanningCategoryChart rows={data.categoryRows}");
+    expect(viewSource.indexOf("<BudgetPlanningCategoryChart")).toBeLessThan(
+      viewSource.indexOf('aria-label="Budget plan by PR Category"'),
+    );
+  });
+
+  test("chart exposes both exact-value series without relying on hover or horizontal scrolling", () => {
+    expect(chartSource).toContain("Actual vs Planning Baseline by PR Category");
+    expect(chartSource).toContain("Actual Spend");
+    expect(chartSource).toContain("Planning Baseline");
+    expect(chartSource).toContain("formatTHB");
+    expect(chartSource).toContain("buildBudgetPlanningChartRows");
+    expect(chartSource).toContain('role="list"');
+    expect(chartSource).not.toContain("overflow-x-auto");
+    expect(chartSource).not.toContain("min-w-[");
   });
 
   test("shows all five planning summary metrics", () => {

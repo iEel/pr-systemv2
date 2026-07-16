@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Download } from "lucide-react";
+import { BudgetPlanningCategoryChart } from "@/components/dashboard/BudgetPlanningCategoryChart";
 import { Badge } from "@/components/ui/Badge";
 import { SectionHeader } from "@/components/ui/Card";
 import { inputClass } from "@/components/ui/Field";
@@ -77,7 +78,9 @@ export function BudgetPlanningView({ data }: { data: BudgetPlanningPageData }): 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(10rem,0.7fr)_minmax(12rem,1fr)_minmax(14rem,1.2fr)_auto] xl:items-end">
           <label className="grid gap-1.5 text-sm font-semibold text-ink">
             Base Year
-            <input className={inputClass()} defaultValue={data.filters.baseYear} max="2100" min="2000" name="year" type="number" />
+            <select className={inputClass()} defaultValue={String(data.filters.baseYear)} name="year">
+              {data.baseYears.map((year) => <option key={year.value} value={year.value}>{year.label}</option>)}
+            </select>
           </label>
           <label className="grid gap-1.5 text-sm font-semibold text-ink">
             Company
@@ -114,6 +117,8 @@ export function BudgetPlanningView({ data }: { data: BudgetPlanningPageData }): 
           ))}
         </div>
       </section>
+
+      <BudgetPlanningCategoryChart rows={data.categoryRows} />
 
       <section aria-label="Budget plan by PR Category" className="min-w-0 space-y-3">
         <div>
