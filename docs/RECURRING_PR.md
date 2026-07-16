@@ -1,6 +1,6 @@
 # Annual Recurring PR
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 Annual Recurring PR creates a reviewable Draft for a renewal. It is a schedule feature, not an automatic controlled-document or notification workflow.
 
@@ -26,13 +26,13 @@ The snapshot deliberately excludes PR/reference numbers, status and status times
 
 ## Worker Contract
 
-`npm run recurring-pr:process` resolves today's Asia/Bangkok date and processes active schedules whose `nextRunDate` is on or before that date. It validates active references and the item snapshot, records the annual run, creates the Draft, reserves soft budget through the existing draft rules, links the run, and advances `nextRunDate` to the next annual occurrence.
+`npm run recurring-pr:process` resolves today's Asia/Bangkok date and processes active schedules whose `nextRunDate` is on or before that date. A serializable worker transaction re-reads the schedule and all required references before it claims an annual run, creates the Draft, reserves soft budget, links the run, and advances `nextRunDate`. A schedule paused before that transaction is skipped without a run or Draft; an inactive required reference produces one safe failed run, no Draft, and a System audit.
 
-The worker creates only a `DRAFT`: `documentDate` is the worker's Bangkok date, `requiredDate` is the renewal date, and `createdById` is the responsible user. It does not render with Carbone, allocate a PR number, create a controlled snapshot or attachment, issue the document, or send external notifications. A user must review and manually issue the Draft through the ordinary PR flow.
+The worker creates only a `DRAFT`: `documentDate` is the worker's Bangkok date, `requiredDate` is the renewal date, `createdById` is the responsible user, and subtotal/VAT/total use the schedule VAT snapshot. It does not render with Carbone, allocate a PR number, create a controlled snapshot or attachment, issue the document, or send external notifications. A user must review and manually issue the Draft through the ordinary PR flow.
 
-`RecurringPurchaseRequestRun` has a unique `scheduleId + occurrenceYear` key. This is the database-level idempotency boundary for overlapping cron/manual processes and retries. A competing process that loses the unique-key race skips the occurrence; the run-to-Draft relation also allows at most one Draft per run.
+`RecurringPurchaseRequestRun` has a unique `scheduleId + occurrenceYear` key. This is the database-level idempotency boundary for overlapping cron/manual processes and retries. An existing occurrence or competing process that loses the unique-key race skips the occurrence and records the safe System audit action `Duplicate annual run skipped`; the run-to-Draft relation also allows at most one Draft per run.
 
-If a server outage leaves an active schedule overdue, the next worker invocation catches it up because it selects `nextRunDate <= today`. After a persisted validation failure, the daily worker does not retry the same occurrence automatically. Correct the invalid schedule reference or item data, then use the authorized `Retry` action; Retry claims and completes the same failed run, never creates another run for that schedule/year. A transaction failure that rolls back before a failed run is persisted remains eligible on a later cron invocation.
+If a server outage leaves an active schedule overdue, the next worker invocation catches up one annual occurrence per schedule because it selects `nextRunDate <= today`. An outage spanning multiple annual occurrences therefore needs subsequent invocations to drain each year safely. After a persisted validation failure, the daily worker does not retry the same occurrence automatically. Correct the invalid schedule reference or item data, then use the authorized `Retry` action; Retry claims and completes the same failed run, never creates another run for that schedule/year. A transaction failure that rolls back before a failed run is persisted remains eligible on a later cron invocation.
 
 Automated run and Draft audit events use `AuditLog.actorId = null`, displayed as `System`; they are not attributed to the responsible user or schedule creator. A manual Retry audit records the authorized human actor. Safe metadata includes schedule, occurrence, responsible-user, renewal/scheduled dates, and relevant Draft/error identifiers without exposing infrastructure secrets.
 
@@ -51,3 +51,5 @@ On 2026-07-15, migration `000010_annual_recurring_pr` was applied to the configu
 The live worker smoke created three due schedules and started two worker commands concurrently. One command claimed all three occurrences while the competing command skipped all three: two valid schedules produced exactly one unnumbered Draft each, the overdue schedule exercised catch-up, and an inactive responsible user produced one safe `FAILED` run with no Draft. After reactivating the user, the authorized UI Retry reused that same run and created one Draft. System audit rows used a null actor.
 
 Authenticated browser QA on port `3002` verified create-from-PR, exact renewal/next-Draft preview, Heading/Item/Detail persistence through schedule save and generated Draft creation, Active/Paused/Needs attention/run-history states, source/Draft cross-links, category-deactivation impact preview, and an `IT_USER` read-only view without create/edit/pause/retry controls. Desktop and 390px mobile checks keep wide tables in internal scroll containers without page-level horizontal overflow. These are development checks, not business UAT or production cron evidence.
+
+The 2026-07-15 migration and live-smoke evidence above predates the 2026-07-16 VAT-snapshot and transaction re-read hardening. Those changes have repository-level regression coverage; no destructive setup or additional live database smoke was run as part of that code review fix.

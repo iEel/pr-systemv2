@@ -29,6 +29,8 @@ export type RecurringWorkerRepository = {
 type WorkerMode = "CRON" | "RETRY";
 type ScheduleRecord = any;
 
+class RecurringRetryValidationError extends Error {}
+
 const knownValidationMessages = new Set([
   "Company / Branch ไม่พร้อมใช้งาน",
   "Department ไม่พร้อมใช้งาน",
@@ -106,6 +108,7 @@ export function buildRecurringDraftInput(schedule: ScheduleRecord, { renewalDate
     purpose: schedule.purpose,
     remark: schedule.remark,
     requiredDate: dateOnly(renewalDate),
+    vatRate: Number(schedule.vatRate),
   };
   return input;
 }
@@ -132,8 +135,8 @@ function auditMetadata(schedule: ScheduleRecord, occurrence: ReturnType<typeof b
   });
 }
 
-async function loadSchedule(scheduleId: string) {
-  return prisma.recurringPurchaseRequestSchedule.findUnique({
+async function loadSchedule(scheduleId: string, client: any = prisma) {
+  return client.recurringPurchaseRequestSchedule.findUnique({
     include: {
       branch: { include: { company: { select: { isActive: true } } } },
       category: { select: { isActive: true } },
@@ -146,53 +149,69 @@ async function loadSchedule(scheduleId: string) {
   });
 }
 
-async function persistValidationFailure(schedule: ScheduleRecord, occurrence: ReturnType<typeof buildAnnualOccurrence>, error: string) {
-  try {
-    const run = await prisma.$transaction(async (tx) => {
-      const created = await tx.recurringPurchaseRequestRun.create({
-        data: {
-          errorMessage: error,
-          finishedAt: new Date(),
-          occurrenceYear: occurrence.occurrenceYear,
-          renewalDate: occurrence.renewalDate,
-          scheduleId: schedule.id,
-          scheduledDraftDate: occurrence.scheduledDraftDate,
-          status: "FAILED",
-        },
-        select: { id: true },
-      });
-      await tx.recurringPurchaseRequestSchedule.update({ data: { lastRunAt: new Date() }, where: { id: schedule.id } });
-      await tx.auditLog.create({
-        data: {
-          action: "Recurring run failed",
-          actorId: null,
-          entityId: created.id,
-          entityType: "RecurringPurchaseRequestRun",
-          metadataJson: auditMetadata(schedule, occurrence, { error }),
-        },
-      });
-      return created;
-    });
-    return { outcome: "FAILED" as const, scheduleId: schedule.id, runId: run.id, error };
-  } catch (caught) {
-    if (isUniqueViolation(caught)) return { outcome: "SKIPPED" as const, scheduleId: schedule.id };
-    throw caught;
-  }
-}
-
 function isUniqueViolation(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
-async function createDraftForRun({ actorId, mode, occurrence, runId, schedule, today }: {
+async function recordDuplicateAnnualRunSkip(schedule: ScheduleRecord, occurrence: ReturnType<typeof buildAnnualOccurrence>) {
+  await prisma.$transaction(async (tx) => {
+    await tx.auditLog.create({
+      data: {
+        action: "Duplicate annual run skipped",
+        actorId: null,
+        entityId: schedule.id,
+        entityType: "RecurringPurchaseRequestSchedule",
+        metadataJson: auditMetadata(schedule, occurrence),
+      },
+    });
+  });
+}
+
+async function persistValidationFailureInTransaction(tx: any, schedule: ScheduleRecord, occurrence: ReturnType<typeof buildAnnualOccurrence>, error: string) {
+  const created = await tx.recurringPurchaseRequestRun.create({
+    data: {
+      errorMessage: error,
+      finishedAt: new Date(),
+      occurrenceYear: occurrence.occurrenceYear,
+      renewalDate: occurrence.renewalDate,
+      scheduleId: schedule.id,
+      scheduledDraftDate: occurrence.scheduledDraftDate,
+      status: "FAILED",
+    },
+    select: { id: true },
+  });
+  await tx.recurringPurchaseRequestSchedule.update({ data: { lastRunAt: new Date() }, where: { id: schedule.id } });
+  await tx.auditLog.create({
+    data: {
+      action: "Recurring run failed",
+      actorId: null,
+      entityId: created.id,
+      entityType: "RecurringPurchaseRequestRun",
+      metadataJson: auditMetadata(schedule, occurrence, { error }),
+    },
+  });
+  return { error, outcome: "FAILED" as const, runId: created.id };
+}
+
+async function createDraftForRun({ actorId, mode, occurrence, runId, scheduleId, today }: {
   actorId: string | null;
   mode: WorkerMode;
   occurrence: ReturnType<typeof buildAnnualOccurrence>;
   runId?: string;
-  schedule: ScheduleRecord;
+  scheduleId: string;
   today: Date;
 }) {
   return prisma.$transaction(async (tx) => {
+    const schedule = await loadSchedule(scheduleId, tx);
+    if (!schedule || (mode === "CRON" && schedule.status !== "ACTIVE")) return { outcome: "SKIPPED" as const };
+    try {
+      validateSchedule(schedule);
+    } catch (error) {
+      const safeError = sanitizeRecurringError(error);
+      if (mode === "RETRY") throw new RecurringRetryValidationError(safeError);
+      return persistValidationFailureInTransaction(tx, schedule, occurrence, safeError);
+    }
+
     let activeRunId = runId;
     if (mode === "CRON") {
       const run = await tx.recurringPurchaseRequestRun.create({
@@ -224,7 +243,7 @@ async function createDraftForRun({ actorId, mode, occurrence, runId, schedule, t
       status: "DRAFT" as const,
     };
     const created = await tx.purchaseRequest.create({ data: createData, select: { id: true } });
-    const totals = calculateDraftTotals(input.items);
+    const totals = calculateDraftTotals(input.items, input.vatRate);
     const budget = await reserveDraftBudget(
       tx,
       buildBudgetReference({
@@ -271,8 +290,8 @@ async function createDraftForRun({ actorId, mode, occurrence, runId, schedule, t
         },
       });
     }
-    return { draftId: created.id, runId: activeRunId! };
-  });
+    return { draftId: created.id, outcome: "CREATED" as const, runId: activeRunId! };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function processRecurringScheduleOccurrence(scheduleId: string, today: Date, mode: WorkerMode = "CRON"): Promise<RecurringWorkerResult> {
@@ -284,19 +303,19 @@ export async function processRecurringScheduleOccurrence(scheduleId: string, tod
       select: { id: true },
       where: { scheduleId_occurrenceYear: { occurrenceYear: occurrence.occurrenceYear, scheduleId } },
     });
-    if (existing) return { outcome: "SKIPPED", scheduleId, runId: existing.id };
+    if (existing) {
+      await recordDuplicateAnnualRunSkip(schedule, occurrence);
+      return { outcome: "SKIPPED", scheduleId, runId: existing.id };
+    }
   }
   try {
-    validateSchedule(schedule);
+    const created = await createDraftForRun({ actorId: null, mode, occurrence, scheduleId, today });
+    return { scheduleId, ...created };
   } catch (error) {
-    if (mode === "RETRY") throw new Error(sanitizeRecurringError(error));
-    return persistValidationFailure(schedule, occurrence, sanitizeRecurringError(error));
-  }
-  try {
-    const created = await createDraftForRun({ actorId: null, mode, occurrence, schedule, today });
-    return { outcome: "CREATED", scheduleId, ...created };
-  } catch (error) {
-    if (isUniqueViolation(error)) return { outcome: "SKIPPED", scheduleId };
+    if (isUniqueViolation(error)) {
+      await recordDuplicateAnnualRunSkip(schedule, occurrence);
+      return { outcome: "SKIPPED", scheduleId };
+    }
     throw error;
   }
 }
@@ -349,13 +368,15 @@ export async function retryRecurringPurchaseRequestRun(runId: string) {
     renewalDate: run.renewalDate,
     scheduledDraftDate: run.scheduledDraftDate,
   };
+  let created;
   try {
-    validateSchedule(schedule);
+    created = await createDraftForRun({ actorId: actor.id, mode: "RETRY", occurrence, runId: run.id, scheduleId: schedule.id, today: bangkokDateOnlyToUtcDate(toBangkokDateOnly(new Date())) });
   } catch (error) {
-    const safeError = sanitizeRecurringError(error);
-    await prisma.recurringPurchaseRequestRun.update({ data: { errorMessage: safeError, finishedAt: new Date() }, where: { id: run.id } });
-    throw new Error(safeError);
+    if (error instanceof RecurringRetryValidationError) {
+      await prisma.recurringPurchaseRequestRun.update({ data: { errorMessage: error.message, finishedAt: new Date() }, where: { id: run.id } });
+    }
+    throw error;
   }
-  const created = await createDraftForRun({ actorId: actor.id, mode: "RETRY", occurrence, runId: run.id, schedule, today: bangkokDateOnlyToUtcDate(toBangkokDateOnly(new Date())) });
+  if (created.outcome !== "CREATED") throw new Error("Recurring run is not eligible for retry");
   return { id: created.draftId, runId: created.runId, scheduleId: schedule.id };
 }

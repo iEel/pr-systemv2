@@ -24,6 +24,7 @@ export type DraftPurchaseRequestInput = {
   purchaseMethod: string;
   remark: string | null;
   items: DraftLineItem[];
+  vatRate?: number;
 };
 
 export type DraftFormOptions = Awaited<ReturnType<typeof getDraftFormOptions>>;
@@ -248,7 +249,7 @@ export function buildDraftCreateData(
   input: DraftPurchaseRequestInput,
   context: { companyId: string; createdById: string; documentRefNo?: string | null; clonedFromId?: string | null },
 ) {
-  const totals = calculateDraftTotals(input.items);
+  const totals = calculateDraftTotals(input.items, input.vatRate);
 
   return {
     clonedFromId: context.clonedFromId || null,

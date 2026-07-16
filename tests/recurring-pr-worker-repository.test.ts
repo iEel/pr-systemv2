@@ -39,6 +39,7 @@ function schedule(overrides: Record<string, unknown> = {}) {
     responsibleUser: { isActive: true },
     responsibleUserId: "user_owner",
     status: "ACTIVE",
+    vatRate: 7,
     ...overrides,
   };
 }
@@ -68,7 +69,7 @@ test("creates PROCESSING then a responsible-user DRAFT, reserves budget, succeed
     auditLog: { create: vi.fn() },
     purchaseRequest: { create: vi.fn().mockResolvedValue({ id: "pr_draft" }) },
     recurringPurchaseRequestRun: { create: vi.fn().mockResolvedValue({ id: "run_2026" }), update: vi.fn() },
-    recurringPurchaseRequestSchedule: { update: vi.fn() },
+    recurringPurchaseRequestSchedule: { findUnique: vi.fn().mockResolvedValue(schedule()), update: vi.fn() },
   };
   mocks.prisma.recurringPurchaseRequestSchedule = { findUnique: vi.fn().mockResolvedValue(schedule()) };
   mocks.prisma.recurringPurchaseRequestRun = { findUnique: vi.fn().mockResolvedValue(null) };
@@ -84,20 +85,44 @@ test("creates PROCESSING then a responsible-user DRAFT, reserves budget, succeed
   expect(mocks.reserveDraftBudget).toHaveBeenCalledWith(tx, expect.objectContaining({ totalAmount: 107 }));
   expect(tx.recurringPurchaseRequestRun.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ purchaseRequestId: "pr_draft", status: "SUCCEEDED" }) }));
   expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "Automated recurring Draft created", actorId: null }) }));
+  expect(mocks.prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "Serializable" });
+});
+
+test("uses the schedule VAT snapshot for persisted recurring Draft totals and budget reservation", async () => {
+  const currentSchedule = schedule({ vatRate: 10 });
+  const tx = {
+    auditLog: { create: vi.fn() },
+    purchaseRequest: { create: vi.fn().mockResolvedValue({ id: "pr_draft" }) },
+    recurringPurchaseRequestRun: { create: vi.fn().mockResolvedValue({ id: "run_2026" }), update: vi.fn() },
+    recurringPurchaseRequestSchedule: { findUnique: vi.fn().mockResolvedValue(currentSchedule), update: vi.fn() },
+  };
+  mocks.prisma.recurringPurchaseRequestSchedule = { findUnique: vi.fn().mockResolvedValue(currentSchedule) };
+  mocks.prisma.recurringPurchaseRequestRun = { findUnique: vi.fn().mockResolvedValue(null) };
+  mocks.prisma.$transaction = vi.fn(async (work: (client: typeof tx) => unknown) => work(tx));
+
+  await processRecurringScheduleOccurrence("schedule_1", new Date("2026-08-02T00:00:00.000Z"));
+
+  expect(tx.purchaseRequest.create).toHaveBeenCalledWith(expect.objectContaining({
+    data: expect.objectContaining({ subtotal: 100, totalAmount: 110, vatAmount: 10, vatRate: 10 }),
+  }));
+  expect(mocks.reserveDraftBudget).toHaveBeenCalledWith(tx, expect.objectContaining({ totalAmount: 110 }));
 });
 
 test("skips the annual occurrence when a run already exists", async () => {
+  const tx = { auditLog: { create: vi.fn() } };
   mocks.prisma.recurringPurchaseRequestSchedule = { findUnique: vi.fn().mockResolvedValue(schedule()) };
   mocks.prisma.recurringPurchaseRequestRun = { findUnique: vi.fn().mockResolvedValue({ id: "run_existing" }) };
+  mocks.prisma.$transaction = vi.fn(async (work: (client: typeof tx) => unknown) => work(tx));
 
   await expect(processRecurringScheduleOccurrence("schedule_1", new Date("2026-08-02T00:00:00.000Z"))).resolves.toEqual({ outcome: "SKIPPED", runId: "run_existing", scheduleId: "schedule_1" });
+  expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "Duplicate annual run skipped", actorId: null }) }));
 });
 
 test("persists a sanitized FAILED validation run without creating a Draft", async () => {
   const tx = {
     auditLog: { create: vi.fn() },
     recurringPurchaseRequestRun: { create: vi.fn().mockResolvedValue({ id: "run_failed" }) },
-    recurringPurchaseRequestSchedule: { update: vi.fn() },
+    recurringPurchaseRequestSchedule: { findUnique: vi.fn().mockResolvedValue(schedule({ category: { isActive: false } })), update: vi.fn() },
   };
   mocks.prisma.recurringPurchaseRequestSchedule = { findUnique: vi.fn().mockResolvedValue(schedule({ category: { isActive: false } })) };
   mocks.prisma.recurringPurchaseRequestRun = { findUnique: vi.fn().mockResolvedValue(null) };
@@ -115,11 +140,64 @@ test("persists a sanitized FAILED validation run without creating a Draft", asyn
 
 test("treats a competing unique annual-run claim as a skip", async () => {
   const uniqueError = new Prisma.PrismaClientKnownRequestError("duplicate", { clientVersion: "test", code: "P2002" });
+  const auditTx = { auditLog: { create: vi.fn() } };
   mocks.prisma.recurringPurchaseRequestSchedule = { findUnique: vi.fn().mockResolvedValue(schedule()) };
   mocks.prisma.recurringPurchaseRequestRun = { findUnique: vi.fn().mockResolvedValue(null) };
-  mocks.prisma.$transaction = vi.fn().mockRejectedValue(uniqueError);
+  mocks.prisma.$transaction = vi.fn().mockRejectedValueOnce(uniqueError).mockImplementationOnce(async (work: (client: typeof auditTx) => unknown) => work(auditTx));
 
   await expect(processRecurringScheduleOccurrence("schedule_1", new Date("2026-08-02T00:00:00.000Z"))).resolves.toEqual({ outcome: "SKIPPED", scheduleId: "schedule_1" });
+  expect(auditTx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "Duplicate annual run skipped", actorId: null }) }));
+});
+
+test("skips without a run or Draft when a schedule is paused after the outer read", async () => {
+  const state = { currentSchedule: schedule() };
+  const tx = {
+    auditLog: { create: vi.fn() },
+    purchaseRequest: { create: vi.fn() },
+    recurringPurchaseRequestRun: { create: vi.fn(), update: vi.fn() },
+    recurringPurchaseRequestSchedule: { findUnique: vi.fn().mockImplementation(() => state.currentSchedule), update: vi.fn() },
+  };
+  mocks.prisma.recurringPurchaseRequestSchedule = {
+    findUnique: vi.fn(async () => {
+      const outerSnapshot = structuredClone(state.currentSchedule);
+      state.currentSchedule = schedule({ status: "PAUSED" });
+      return outerSnapshot;
+    }),
+  };
+  mocks.prisma.recurringPurchaseRequestRun = { findUnique: vi.fn().mockResolvedValue(null) };
+  mocks.prisma.$transaction = vi.fn(async (work: (client: typeof tx) => unknown) => work(tx));
+
+  await expect(processRecurringScheduleOccurrence("schedule_1", new Date("2026-08-02T00:00:00.000Z"))).resolves.toEqual({ outcome: "SKIPPED", scheduleId: "schedule_1" });
+  expect(tx.recurringPurchaseRequestRun.create).not.toHaveBeenCalled();
+  expect(tx.purchaseRequest.create).not.toHaveBeenCalled();
+});
+
+test("persists one failed run without a Draft when category deactivation commits after the outer read", async () => {
+  const state = { currentSchedule: schedule() };
+  const tx = {
+    auditLog: { create: vi.fn() },
+    purchaseRequest: { create: vi.fn() },
+    recurringPurchaseRequestRun: { create: vi.fn().mockResolvedValue({ id: "run_failed" }), update: vi.fn() },
+    recurringPurchaseRequestSchedule: { findUnique: vi.fn().mockImplementation(() => state.currentSchedule), update: vi.fn() },
+  };
+  mocks.prisma.recurringPurchaseRequestSchedule = {
+    findUnique: vi.fn(async () => {
+      const outerSnapshot = structuredClone(state.currentSchedule);
+      state.currentSchedule = schedule({ category: { isActive: false } });
+      return outerSnapshot;
+    }),
+  };
+  mocks.prisma.recurringPurchaseRequestRun = { findUnique: vi.fn().mockResolvedValue(null) };
+  mocks.prisma.$transaction = vi.fn(async (work: (client: typeof tx) => unknown) => work(tx));
+
+  await expect(processRecurringScheduleOccurrence("schedule_1", new Date("2026-08-02T00:00:00.000Z"))).resolves.toEqual({
+    error: "หมวดหมู่ PR ไม่พร้อมใช้งาน",
+    outcome: "FAILED",
+    runId: "run_failed",
+    scheduleId: "schedule_1",
+  });
+  expect(tx.purchaseRequest.create).not.toHaveBeenCalled();
+  expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "Recurring run failed", actorId: null }) }));
 });
 
 test("leaves unexpected transaction failures available for a later cron retry", async () => {
@@ -135,7 +213,7 @@ test("retries the same FAILED run only after permission and transitions it throu
     auditLog: { create: vi.fn() },
     purchaseRequest: { create: vi.fn().mockResolvedValue({ id: "pr_retried" }) },
     recurringPurchaseRequestRun: { update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
-    recurringPurchaseRequestSchedule: { update: vi.fn() },
+    recurringPurchaseRequestSchedule: { findUnique: vi.fn().mockResolvedValue(schedule()), update: vi.fn() },
   };
   mocks.prisma.recurringPurchaseRequestRun = {
     findUnique: vi.fn().mockResolvedValue({
@@ -156,6 +234,33 @@ test("retries the same FAILED run only after permission and transitions it throu
   expect(mocks.requirePermission).toHaveBeenCalledWith("PR_RECURRING_MANAGE");
   expect(tx.recurringPurchaseRequestRun.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "PROCESSING" }), where: { id: "run_failed", purchaseRequestId: null, status: "FAILED" } }));
   expect(tx.auditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "Recurring run retried", actorId: "admin_1" }) }));
+});
+
+test("keeps a failed retry safely failed when a required reference becomes inactive", async () => {
+  const tx = {
+    recurringPurchaseRequestSchedule: { findUnique: vi.fn().mockResolvedValue(schedule({ category: { isActive: false } })) },
+  };
+  mocks.prisma.recurringPurchaseRequestRun = {
+    findUnique: vi.fn().mockResolvedValue({
+      id: "run_failed",
+      occurrenceYear: 2026,
+      purchaseRequestId: null,
+      renewalDate: new Date("2026-09-01T00:00:00.000Z"),
+      schedule: {},
+      scheduleId: "schedule_1",
+      scheduledDraftDate: new Date("2026-08-02T00:00:00.000Z"),
+      status: "FAILED",
+    }),
+    update: vi.fn(),
+  };
+  mocks.prisma.recurringPurchaseRequestSchedule = { findUnique: vi.fn().mockResolvedValue(schedule()) };
+  mocks.prisma.$transaction = vi.fn(async (work: (client: typeof tx) => unknown) => work(tx));
+
+  await expect(retryRecurringPurchaseRequestRun("run_failed")).rejects.toThrow("หมวดหมู่ PR ไม่พร้อมใช้งาน");
+  expect(mocks.prisma.recurringPurchaseRequestRun.update).toHaveBeenCalledWith({
+    data: expect.objectContaining({ errorMessage: "หมวดหมู่ PR ไม่พร้อมใช้งาน", finishedAt: expect.any(Date) }),
+    where: { id: "run_failed" },
+  });
 });
 
 function installTransactionalState({ failAutomatedAudit = false, initialRun, retryClaimBarrier: useRetryClaimBarrier = false }: { failAutomatedAudit?: boolean; initialRun?: Record<string, any>; retryClaimBarrier?: boolean } = {}) {
@@ -225,7 +330,7 @@ function installTransactionalState({ failAutomatedAudit = false, initialRun, ret
           return { count: 1 };
         },
       },
-      recurringPurchaseRequestSchedule: { update: async () => undefined },
+      recurringPurchaseRequestSchedule: { findUnique: async () => schedule(), update: async () => undefined },
     };
     const result = await work(tx);
     state = pending;

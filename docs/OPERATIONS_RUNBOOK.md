@@ -63,7 +63,7 @@ The manual command uses the same explicit `PATH` and absolute local `tsx` execut
 
 ## Recurring PR Maintenance And Recovery
 
-During maintenance, disable the application service user's cron entry (comment out the recurring worker line with `crontab -e`) before taking the application down. Restore the entry after maintenance and run the manual command once. The worker performs catch-up: it finds due schedules missed during downtime and creates at most one annual Draft per schedule occurrence. Do not delete `/var/lib/it-pr-dms/locks/recurring-pr.lock` while a run is active; `flock` releases it automatically when the process exits.
+During maintenance, disable the application service user's cron entry (comment out the recurring worker line with `crontab -e`) before taking the application down. Restore the entry after maintenance and run the manual command once. The worker performs catch-up by handling at most one annual occurrence for each due schedule per invocation; if downtime spans multiple annual occurrences, run subsequent invocations until the overdue years drain. Do not delete `/var/lib/it-pr-dms/locks/recurring-pr.lock` while a run is active; `flock` releases it automatically when the process exits.
 
 If a run exits with code 2, inspect the safe JSON summary and the schedule run history. Correct the schedule data, then use the authorized Retry action for that failed run. Cron does not repeatedly retry persisted validation failures.
 

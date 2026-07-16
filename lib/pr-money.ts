@@ -28,9 +28,8 @@ export function calculateDraftLineTotal(quantity: number, unitCost: number) {
   return roundMoney(quantity * unitCost);
 }
 
-export function calculateDraftTotals(items: DraftLineItem[]): DraftTotals {
+export function calculateDraftTotals(items: DraftLineItem[], vatRate = 7): DraftTotals {
   const subtotal = roundMoney(items.reduce((sum, item) => sum + (isPricedItem(item) ? item.totalAmount : 0), 0));
-  const vatRate = 7;
   const vatAmount = roundMoney(subtotal * (vatRate / 100));
 
   return {
