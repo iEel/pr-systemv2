@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { parseRecurringScheduleForm } from "../lib/recurring-pr";
-import { resetDivisionForDepartmentChange } from "../lib/recurring-pr-form";
+import {
+  getRecurringDraftTimingState,
+  getRecurringScheduleReadiness,
+  resetDivisionForDepartmentChange,
+  thaiMonthOptions,
+} from "../lib/recurring-pr-form";
 
 function formWithDivision(divisionId: string) {
   const form = new FormData();
@@ -13,6 +18,39 @@ function formWithDivision(divisionId: string) {
 }
 
 describe("Recurring schedule form behavior", () => {
+  test("lists incomplete schedule requirements in stable order", () => {
+    expect(getRecurringScheduleReadiness({
+      categoryId: "",
+      name: " ",
+      previewValid: false,
+      responsibleUserId: "",
+    })).toEqual({
+      ready: false,
+      missing: ["Schedule name", "Responsible user", "PR category", "Valid renewal date"],
+    });
+  });
+
+  test("marks a complete valid schedule as ready", () => {
+    expect(getRecurringScheduleReadiness({
+      categoryId: "cat_1",
+      name: "Annual infrastructure renewal",
+      previewValid: true,
+      responsibleUserId: "user_1",
+    })).toEqual({ ready: true, missing: [] });
+  });
+
+  test("classifies Draft timing against the Bangkok date", () => {
+    expect(getRecurringDraftTimingState(new Date("2026-07-17T00:00:00.000Z"), "2026-07-16")).toBe("upcoming");
+    expect(getRecurringDraftTimingState(new Date("2026-07-16T00:00:00.000Z"), "2026-07-16")).toBe("dueToday");
+    expect(getRecurringDraftTimingState(new Date("2026-06-16T00:00:00.000Z"), "2026-07-16")).toBe("overdue");
+  });
+
+  test("provides all twelve localized month options", () => {
+    expect(thaiMonthOptions).toHaveLength(12);
+    expect(thaiMonthOptions[0]).toEqual({ label: "มกราคม", value: 1 });
+    expect(thaiMonthOptions[11]).toEqual({ label: "ธันวาคม", value: 12 });
+  });
+
   test("resets a dependent division before its changed-department FormData is submitted", () => {
     const resetValue = resetDivisionForDepartmentChange("division_from_department_1");
     expect(resetValue).toBe("");
