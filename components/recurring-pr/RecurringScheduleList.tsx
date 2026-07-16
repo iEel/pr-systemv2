@@ -27,7 +27,7 @@ function statusTone(status: RecurringScheduleRow["status"]) {
 export function RecurringScheduleList({ canManage, filters, options, rows, summary }: Props) {
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">Recurring PR</h1>
@@ -42,7 +42,7 @@ export function RecurringScheduleList({ canManage, filters, options, rows, summa
         ))}
       </div>
 
-      <form className="grid gap-3 rounded-lg border border-border bg-panel p-4 lg:grid-cols-[minmax(14rem,1fr)_10rem_13rem_13rem_9rem_auto] lg:items-end" method="get">
+      <form className="grid gap-3 rounded-lg border border-border bg-panel p-4 2xl:grid-cols-[minmax(14rem,1fr)_10rem_13rem_13rem_9rem_auto] 2xl:items-end" method="get">
         <label className="grid gap-1.5 text-sm font-semibold text-ink">Search<input className={inputClass()} defaultValue={filters.q} name="q" placeholder="Schedule, category, owner" /></label>
         <label className="grid gap-1.5 text-sm font-semibold text-ink">Status<select className={inputClass()} defaultValue={filters.status} name="status"><option value="ALL">All statuses</option><option value="ACTIVE">Active</option><option value="NEEDS_ATTENTION">Needs attention</option><option value="PAUSED">Paused</option></select></label>
         <label className="grid gap-1.5 text-sm font-semibold text-ink">Category<select className={inputClass()} defaultValue={filters.categoryId} name="categoryId"><option value="ALL">All categories</option>{options.categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}</select></label>
@@ -52,7 +52,7 @@ export function RecurringScheduleList({ canManage, filters, options, rows, summa
       </form>
 
       <TableWrap>
-        <div className="overflow-x-auto">
+        <div className="max-w-full overflow-x-auto">
           <table className="w-full min-w-[1180px] border-collapse">
             <thead><tr>{["Schedule", "Category", "Renewal", "Lead", "Responsible", "Next Draft", "Last Run", "Status", "Actions"].map((head) => <th className={`${tableHeaderClass} ${head === "Actions" ? "sticky right-0 z-20 bg-slate-50" : ""} px-4 py-3`} key={head}>{head}</th>)}</tr></thead>
             <tbody>{rows.length ? rows.map((row) => (

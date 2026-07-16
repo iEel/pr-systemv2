@@ -44,6 +44,10 @@ The CLI prints one safe JSON result. Exit code `0` means all due schedules compl
 
 Run the documented minimal-environment command from the operations guide for a safe manual execution. Do not delete the persistent lock while a process is active; `flock` releases it when that process exits.
 
-## Verification Boundary
+## Development Verification Evidence
 
-This documentation describes the checked-in scheduler and migration `000010_annual_recurring_pr`. It does not claim that the migration has been applied to a development database or that live concurrency, catch-up, browser, or UAT checks have succeeded. Record those results only after they are run against the intended environment.
+On 2026-07-15, migration `000010_annual_recurring_pr` was applied to the configured development SQL Server and `npx prisma migrate status` reported all 10 migrations up to date. A zero-due-run CLI smoke returned one safe JSON line with exit code `0`.
+
+The live worker smoke created three due schedules and started two worker commands concurrently. One command claimed all three occurrences while the competing command skipped all three: two valid schedules produced exactly one unnumbered Draft each, the overdue schedule exercised catch-up, and an inactive responsible user produced one safe `FAILED` run with no Draft. After reactivating the user, the authorized UI Retry reused that same run and created one Draft. System audit rows used a null actor.
+
+Authenticated browser QA on port `3002` verified create-from-PR, exact renewal/next-Draft preview, Heading/Item/Detail persistence through schedule save and generated Draft creation, Active/Paused/Needs attention/run-history states, source/Draft cross-links, category-deactivation impact preview, and an `IT_USER` read-only view without create/edit/pause/retry controls. Desktop and 390px mobile checks keep wide tables in internal scroll containers without page-level horizontal overflow. These are development checks, not business UAT or production cron evidence.

@@ -24,7 +24,7 @@ Completed:
 - Auth hardening proxy protects app routes before server components load: anonymous users redirect to `/login?callbackUrl=...`, and authenticated users without route-level admin permissions redirect to `/forbidden`.
 - DB-backed PR list, dashboard recent PR embed, PR detail, draft create, and draft edit.
 - PR Category Master is complete: seven active categories are seeded through migration and development seed, `/masters/pr-categories` provides `MASTER_DATA_MANAGE` CRUD with audit history, and referenced categories are deactivated instead of deleted.
-- Annual Recurring PR is implemented in the checked-in code: `/recurring-pr` owns annual schedule configuration and run history; schedules snapshot a source PR's eligible header/item fields, and the private Bangkok-date CLI creates only reviewable Drafts for active responsible users. Database uniqueness on `scheduleId + occurrenceYear` prevents duplicate annual runs. See `docs/RECURRING_PR.md` for the workflow and operations contract; migration/live UAT evidence must be recorded separately after execution.
+- Annual Recurring PR is implemented and development-verified: `/recurring-pr` owns annual schedule configuration and run history; schedules snapshot a source PR's eligible header/item fields, and the private Bangkok-date CLI creates only reviewable Drafts for active responsible users. Database uniqueness on `scheduleId + occurrenceYear` prevents duplicate annual runs. Migration `000010_annual_recurring_pr`, concurrent worker/catch-up/Retry behavior, RBAC, and desktop/mobile browser flows were verified on 2026-07-15. See `docs/RECURRING_PR.md` for the workflow and operations contract.
 - Every new or edited Draft requires an active category on the server. The SQL relation remains nullable so legacy controlled PRs without a category stay readable, renderable, and display `Not categorized`.
 - Clone preserves its source category. Reissue automatically reuses an active source category; for a missing or inactive source category, the user must choose an active category before the replacement Draft is created.
 - PR Documents now supports `Table | Board` views on the same filtered page. Table keeps the dense list workflow; Board groups active Draft/Generated/Printed workflow rows separately from Completed/Archived Signed/Cancelled/Reissued rows, with read-only quick actions and no drag-and-drop status mutation.
@@ -120,6 +120,18 @@ npm run build
 npx prisma validate
 npm run pdf:qa -- --input storage/generated/ITPR_2606008.pdf --expected-pages 1
 ```
+
+Latest verified result on 2026-07-15 after Annual Recurring PR completion:
+- `npx prisma migrate deploy` applied `000010_annual_recurring_pr`; `npx prisma migrate status` reported all 10 migrations up to date, and `npm run prisma:generate` passed.
+- `npm test`: passed, 69 files / 396 tests. `npm run typecheck`, `npx prisma validate`, `npm run build`, and `git diff --check` also passed.
+- A zero-due CLI run returned one safe JSON summary with exit code `0`.
+- Two simultaneous worker commands processed three due schedules without duplication: one process created two Drafts and one safe failed run, while the competing process skipped all three claimed occurrences.
+- Catch-up for an overdue schedule created one Draft. An inactive responsible user created one `FAILED` run and no Draft; authorized UI Retry reused that run and produced one unnumbered Draft with a System audit trail.
+- Create-from-PR browser QA preserved Company/Branch/Department/Category and ordered Item/Heading/Detail rows. Renewal `31/12/2569` with lead 30 previewed Next Draft `01/12/2569`, and the generated Draft retained all three row types.
+- Admin pause/resume controls, source/Draft cross-links, empty state, category-deactivation impact preview, and disposable `IT_USER` read-only behavior passed.
+- Desktop and 390px mobile browser checks passed after containing list/detail tables within internal scroll wrappers; recurring pages have no page-level horizontal overflow. Normal recurring flows reported no browser console errors.
+- The disposable QA schedules, Drafts, audit rows, and users are removed after final verification; production cron and business UAT remain release activities.
+- Known warning remains: Prisma/MSSQL emits Node `DEP0123` when TLS `ServerName` is an IP address; commands still pass.
 
 Latest verified result on 2026-07-03 after PR Documents Board archive refinement:
 - `/pr` now has a client-side `Table | Board` switch. Existing search/company/branch/status filters feed both views.
@@ -472,12 +484,11 @@ Important current tags:
 
 ## Recommended Next Work
 
-1. Apply `000010_annual_recurring_pr` in the intended environment and record migration, concurrent-worker, catch-up, Retry, and browser QA evidence; do not treat checked-in documentation as proof of live verification.
-2. Add browser-level low-role smoke coverage by seeding a disposable `IT_USER`/`VIEWER` test account or adding a dedicated test fixture.
-3. Add user-facing PR warning banners for `MISSING` / `OVER_BUDGET` audit states if IT wants budget warnings visible before audit review.
-4. Run a real UAT backup/restore drill using `docs/BACKUP_RESTORE.md`.
-5. Add automated pixel/baseline comparison on top of the PDF QA rendered PNGs.
-6. Add centralized monitoring/log aggregation and production TLS/internal CA sign-off.
+1. Run Annual Recurring PR business UAT with real source PRs, owners, and the deployed Ubuntu service-user cron command; confirm logs, lock behavior, and notification expectations with operations.
+2. Add user-facing PR warning banners for `MISSING` / `OVER_BUDGET` audit states if IT wants budget warnings visible before audit review.
+3. Run a real UAT backup/restore drill using `docs/BACKUP_RESTORE.md`.
+4. Add automated pixel/baseline comparison on top of the PDF QA rendered PNGs.
+5. Add centralized monitoring/log aggregation and production TLS/internal CA sign-off.
 
 ## Documentation Index
 

@@ -66,6 +66,16 @@ Expected:
 - Confirm a paused schedule is not processed. Confirm `Needs attention` is derived rather than stored as a third schedule status.
 - Run the documented Ubuntu minimal-environment manual command and inspect `/var/log/it-pr-dms/recurring-pr.log`; confirm one safe JSON line and expected exit code (`0`, `2`, or `1`). Confirm the cron path uses `CRON_TZ=Asia/Bangkok` and `flock -n`.
 
+Development evidence recorded on 2026-07-15:
+
+- Migration `000010_annual_recurring_pr` applied; all 10 development migrations are up to date.
+- Full verification passed: 69 Vitest files / 396 tests, TypeScript, Prisma validation, production build, and diff check.
+- Two concurrent worker commands produced one run/Draft per valid annual occurrence; the losing process skipped already-claimed occurrences.
+- Catch-up, inactive-owner failure, System audit, authorized same-run Retry, Draft-only/no-number behavior, and Heading/Item/Detail propagation passed against SQL Server.
+- Admin and disposable `IT_USER` browser checks passed for create/manage versus read-only controls. Category impact preview named affected active schedules without changing the category.
+- Recurring list/detail/form checks passed at desktop and 390px mobile widths. Wide tables scroll internally; page-level horizontal overflow is absent.
+- Production cron, logrotate, backup/restore, and business UAT remain environment-specific release checks.
+
 ## Authentication Smoke Test
 
 - Anonymous visit to `/dashboard` redirects to `/login?callbackUrl=%2Fdashboard`.
@@ -398,7 +408,8 @@ Mobile:
 
 ## Future QA Additions
 
-- After Task 8 applies `000010_annual_recurring_pr`, run SQL Server integration coverage for a late recurring-worker transaction failure and concurrent cron/manual Retry claims; confirm rollback leaves no run, Draft, budget reservation, or audit rows and contention leaves exactly one annual run and Draft.
+- Repeat the recurring worker smoke under the deployed Ubuntu service user and cron-like minimal environment during UAT, including logrotate and reboot recovery of the persistent lock directory.
+- Run SQL Server integration coverage for a late recurring-worker transaction failure; confirm rollback leaves no run, Draft, budget reservation, or audit rows.
 - Visual regression screenshots for generated PDFs.
 - Browser automation for the full draft-preview-issue-print-sign lifecycle.
 - Concurrency test for multiple users issuing PRs at the same time.

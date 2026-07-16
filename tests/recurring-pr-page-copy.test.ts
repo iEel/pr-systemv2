@@ -45,4 +45,20 @@ describe("Recurring PR pages", () => {
     expect(detail).toContain('canManage && run.status === "FAILED" && !run.purchaseRequest');
     expect(detail).toContain("Retry failed run");
   });
+
+  test("contains the wide run-history table inside a shrinkable mobile grid column", () => {
+    const detail = readFileSync("app/recurring-pr/[id]/page.tsx", "utf8");
+
+    expect(detail).toContain('<div className="min-w-0 space-y-5">');
+    expect(detail).toContain('<div className="max-w-full overflow-x-auto">');
+  });
+
+  test("keeps list filters and the wide schedule table inside the available workspace", () => {
+    const list = readFileSync("components/recurring-pr/RecurringScheduleList.tsx", "utf8");
+
+    expect(list).toContain('<div className="min-w-0 space-y-5">');
+    expect(list).toContain("2xl:grid-cols-[minmax(14rem,1fr)_10rem_13rem_13rem_9rem_auto]");
+    expect(list).not.toContain("lg:grid-cols-[minmax(14rem,1fr)_10rem_13rem_13rem_9rem_auto]");
+    expect(list).toContain('<div className="max-w-full overflow-x-auto">');
+  });
 });
