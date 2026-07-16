@@ -78,6 +78,14 @@ describe("Recurring schedule form behavior", () => {
     expect(source).toContain("state.fieldErrors.items");
   });
 
+  test("gives every editable item control a row-specific accessible name", () => {
+    const source = readFileSync("components/pr/PRItemEditor.tsx", "utf8");
+
+    for (const label of ["type", "account code", "description", "quantity", "unit cost"]) {
+      expect(source).toContain(`aria-label={\`Row \${index + 1} ${label}\`}`);
+    }
+  });
+
   test("pairs the sticky actions header with its sticky cells", () => {
     const source = readFileSync("components/recurring-pr/RecurringScheduleList.tsx", "utf8");
 
