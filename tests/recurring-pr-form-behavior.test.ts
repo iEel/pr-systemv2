@@ -66,6 +66,9 @@ describe("Recurring schedule form behavior", () => {
     expect(source).toContain("disabled={divisions.length === 0}");
     expect(source).toContain("useActionState");
     expect(source).toContain("aria-invalid");
+    expect(source).toContain("getRecurringScheduleReadiness");
+    expect(source).toContain("getRecurringDraftTimingState");
+    expect(source).toContain("responsibleUserLabel");
   });
 
   test("passes every visible server-validated error into its rendered field", () => {
