@@ -3,14 +3,39 @@ import { Plus } from "lucide-react";
 import { AppFrame } from "@/components/app/AppFrame";
 import { BudgetCards } from "@/components/dashboard/BudgetCards";
 import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
+import { BudgetPlanningView, DashboardViewNav } from "@/components/dashboard/BudgetPlanningView";
 import { PRList } from "@/components/pr/PRList";
 import { SectionHeader } from "@/components/ui/Card";
 import { getPurchaseRequestListItems } from "@/lib/purchase-requests";
 import { getDashboardReportData } from "@/lib/reporting";
+import { getBudgetPlanningPageData } from "@/lib/budget-planning.server";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function DashboardPage({ searchParams }: { searchParams?: SearchParams }) {
+  const params = searchParams ? await searchParams : {};
+  const read = (key: string) => {
+    const value = params[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+  const view = read("view");
+
+  if (view === "planning") {
+    const data = await getBudgetPlanningPageData({
+      year: read("year"),
+      companyId: read("companyId"),
+      categoryId: read("categoryId"),
+    });
+
+    return (
+      <AppFrame>
+        <BudgetPlanningView data={data} />
+      </AppFrame>
+    );
+  }
+
   const [requests, report] = await Promise.all([
     getPurchaseRequestListItems({ take: 6 }),
     getDashboardReportData(),
@@ -29,6 +54,7 @@ export default async function DashboardPage() {
             </Link>
           }
         />
+        <DashboardViewNav current="overview" />
         <BudgetCards summary={report.summary} />
         <DashboardCharts report={report} />
         <section aria-label="Recent PR documents" className="pt-1">
