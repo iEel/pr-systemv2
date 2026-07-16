@@ -6,12 +6,26 @@ const viewSource = readFileSync("components/dashboard/BudgetPlanningView.tsx", "
 
 describe("dashboard budget planning page", () => {
   test("loads only the data required by the selected dashboard view", () => {
+    const planningBranchStart = pageSource.indexOf('if (view === "planning")');
+    const overviewBranchStart = pageSource.indexOf("const [requests, report]");
+    const planningBranch = pageSource.slice(planningBranchStart, overviewBranchStart);
+    const overviewBranch = pageSource.slice(overviewBranchStart);
+
+    expect(planningBranchStart).toBeGreaterThan(-1);
+    expect(overviewBranchStart).toBeGreaterThan(planningBranchStart);
     expect(pageSource).toContain('view === "planning"');
-    expect(pageSource).toContain("getBudgetPlanningPageData({");
-    expect(pageSource).toContain('year: read("year")');
-    expect(pageSource).toContain('companyId: read("companyId")');
-    expect(pageSource).toContain('categoryId: read("categoryId")');
-    expect(pageSource.indexOf("getBudgetPlanningPageData({")).toBeLessThan(pageSource.indexOf("getPurchaseRequestListItems({ take: 6 })"));
+    expect(planningBranch).toContain("getBudgetPlanningPageData({");
+    expect(planningBranch).toContain('year: read("year")');
+    expect(planningBranch).toContain('companyId: read("companyId")');
+    expect(planningBranch).toContain('categoryId: read("categoryId")');
+    expect(planningBranch).toContain("return (");
+    expect(planningBranch).not.toContain("getPurchaseRequestListItems");
+    expect(planningBranch).not.toContain("getDashboardReportData");
+    expect(overviewBranch).toContain("Promise.all([");
+    expect(overviewBranch).toContain("getPurchaseRequestListItems({ take: 6 })");
+    expect(overviewBranch).toContain("getDashboardReportData()");
+    expect(overviewBranch).not.toContain("getBudgetPlanningPageData({");
+    expect(pageSource.match(/getBudgetPlanningPageData\(\{/g)).toHaveLength(1);
   });
 
   test("preserves the overview dashboard and New PR action", () => {
@@ -28,6 +42,7 @@ describe("dashboard budget planning page", () => {
     expect(viewSource).toContain("Budget Planning");
     expect(viewSource).toContain('aria-current={current ===');
     expect(viewSource).toContain("focus-visible:ring-2");
+    expect(viewSource).toContain('"bg-primary text-white ring-2 ring-primary ring-offset-1"');
     expect(pageSource).toContain('<DashboardViewNav current="overview"');
     expect(viewSource).toContain('<DashboardViewNav current="planning"');
   });
@@ -62,6 +77,15 @@ describe("dashboard budget planning page", () => {
       expect(viewSource).toContain(label);
     }
     expect(viewSource).toContain("formatTHB");
+    expect(viewSource).not.toContain("truncate text-lg");
+    expect(viewSource).toContain("break-words text-lg");
+  });
+
+  test("uses gap dividers that remain correct at one, two, and five columns", () => {
+    expect(viewSource).toContain('className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-5"');
+    expect(viewSource).toContain('className="min-w-0 bg-panel p-4"');
+    expect(viewSource).not.toContain("index > 0 &&");
+    expect(viewSource).not.toContain("index === 2 &&");
   });
 
   test("renders the complete category analysis table in a contained scroller", () => {

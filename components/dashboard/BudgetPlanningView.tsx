@@ -19,14 +19,14 @@ export function DashboardViewNav({ current }: { current: "overview" | "planning"
     <nav aria-label="Dashboard views" className="flex w-full flex-wrap gap-1 rounded-md border border-border bg-panel p-1">
       <Link
         aria-current={current === "overview" ? "page" : undefined}
-        className={cn(navLinkClass, current === "overview" ? "bg-primary text-white" : "text-ink hover:bg-surface")}
+        className={cn(navLinkClass, current === "overview" ? "bg-primary text-white ring-2 ring-primary ring-offset-1" : "text-ink hover:bg-surface")}
         href="/dashboard"
       >
         Overview
       </Link>
       <Link
         aria-current={current === "planning" ? "page" : undefined}
-        className={cn(navLinkClass, current === "planning" ? "bg-primary text-white" : "text-ink hover:bg-surface")}
+        className={cn(navLinkClass, current === "planning" ? "bg-primary text-white ring-2 ring-primary ring-offset-1" : "text-ink hover:bg-surface")}
         href="/dashboard?view=planning"
       >
         Budget Planning
@@ -104,11 +104,11 @@ export function BudgetPlanningView({ data }: { data: BudgetPlanningPageData }): 
       </form>
 
       <section aria-label="Budget planning summary" className="overflow-hidden rounded-lg border border-border bg-panel">
-        <div className="grid sm:grid-cols-2 xl:grid-cols-5">
-          {summaryItems.map((item, index) => (
-            <div className={cn("min-w-0 p-4", index > 0 && "border-t border-border sm:border-l xl:border-t-0", index === 2 && "sm:border-l-0 xl:border-l")} key={item.label}>
+        <div className="grid gap-px bg-border sm:grid-cols-2 xl:grid-cols-5">
+          {summaryItems.map((item) => (
+            <div className="min-w-0 bg-panel p-4" key={item.label}>
               <p className="text-sm font-semibold text-muted">{item.label}</p>
-              <p className="mt-2 truncate text-lg font-bold tabular-nums text-ink" title={formatTHB(item.value)}>{formatTHB(item.value)}</p>
+              <p className="mt-2 break-words text-lg font-bold leading-6 tabular-nums text-ink" title={formatTHB(item.value)}>{formatTHB(item.value)}</p>
               <p className="mt-1 text-xs text-muted">{item.helper}</p>
             </div>
           ))}
