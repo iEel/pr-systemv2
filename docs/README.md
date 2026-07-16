@@ -14,6 +14,7 @@ Start here:
 - [DATABASE.md](DATABASE.md) - selected SQL Server database name and environment configuration.
 - [BACKEND_INTEGRATION.md](BACKEND_INTEGRATION.md) - implemented and remaining backend, Carbone, and file integration notes.
 - [COMPANY_BRANCH_MASTER.md](COMPANY_BRANCH_MASTER.md) - company/branch document profiles and header/footer asset handling.
+- [CARBONE_HEADER_FOOTER_GUIDE.md](CARBONE_HEADER_FOOTER_GUIDE.md) - reusable Carbone header/footer image workflow and DOCX patching guide.
 - [BUDGET_MASTER.md](BUDGET_MASTER.md) - SQL Server budget CRUD, permissions, audit, and reporting impact.
 - [ADMIN_SETTINGS.md](ADMIN_SETTINGS.md) - SQL Server users/roles and running-number settings management.
 - [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) - implemented design tokens and UI rules.

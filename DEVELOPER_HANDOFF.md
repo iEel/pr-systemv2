@@ -502,6 +502,7 @@ Important current tags:
 - [docs/DATABASE.md](docs/DATABASE.md)
 - [docs/BACKEND_INTEGRATION.md](docs/BACKEND_INTEGRATION.md)
 - [docs/COMPANY_BRANCH_MASTER.md](docs/COMPANY_BRANCH_MASTER.md)
+- [docs/CARBONE_HEADER_FOOTER_GUIDE.md](docs/CARBONE_HEADER_FOOTER_GUIDE.md)
 - [docs/BUDGET_MASTER.md](docs/BUDGET_MASTER.md)
 - [docs/ADMIN_SETTINGS.md](docs/ADMIN_SETTINGS.md)
 - [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)
