@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
+import { getBreadcrumbLabel } from "../lib/breadcrumbs";
 
 describe("PR category admin page", () => {
   test("provides focused category CRUD and shared master navigation", () => {
@@ -22,10 +23,7 @@ describe("PR category admin page", () => {
   });
 
   test("labels the PR category route correctly in the topbar breadcrumb", () => {
-    const breadcrumbs = readFileSync("components/app/Breadcrumbs.tsx", "utf8");
-
-    expect(breadcrumbs).toContain('"pr-categories": "PR Categories"');
-    expect(breadcrumbs).toContain('labels[segment] ?? (segment.startsWith("pr-") ? "PR Detail" : segment)');
+    expect(getBreadcrumbLabel(["masters", "pr-categories"], 1)).toBe("PR Categories");
   });
 
   test("requires a named deactivation impact confirmation with affected recurring schedule links", () => {
