@@ -47,6 +47,16 @@ describe("dashboard budget planning page", () => {
     expect(viewSource).toContain('<DashboardViewNav current="planning"');
   });
 
+  test("keeps dashboard view navigation at the 40px product control height", () => {
+    const navClassStart = viewSource.indexOf("const navLinkClass =");
+    const navClassEnd = viewSource.indexOf(";", navClassStart);
+    const navClass = viewSource.slice(navClassStart, navClassEnd);
+
+    expect(navClassStart).toBeGreaterThan(-1);
+    expect(navClass).toContain("min-h-10");
+    expect(navClass).not.toContain("min-h-9");
+  });
+
   test("renders the planning heading, filters, forecast helper, reset, and export action", () => {
     for (const copy of [
       "Budget Planning ${data.filters.baseYear} → ${data.filters.forecastYear}",
@@ -122,5 +132,13 @@ describe("dashboard budget planning page", () => {
     expect(viewSource).toContain("categoryId: row.categoryId");
     expect(viewSource).toContain('row.categoryId ? (');
     expect(viewSource).toMatch(/\)\s*:\s*\(\s*<span>Not categorized<\/span>/);
+  });
+
+  test("keeps category filter links at the 40px product control height", () => {
+    const categoryHrefStart = viewSource.indexOf("href={buildBudgetPlanningHref({");
+    const categoryLink = viewSource.slice(categoryHrefStart - 260, categoryHrefStart);
+
+    expect(categoryHrefStart).toBeGreaterThan(-1);
+    expect(categoryLink).toContain("inline-flex min-h-10 items-center");
   });
 });

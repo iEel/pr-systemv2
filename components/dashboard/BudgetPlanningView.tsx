@@ -12,7 +12,7 @@ import type { BudgetPlanningPageData } from "@/lib/budget-planning.server";
 import { cn, formatAmount, formatTHB } from "@/lib/utils";
 
 const navLinkClass =
-  "inline-flex min-h-9 items-center rounded-md px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
+  "inline-flex min-h-10 items-center rounded-md px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
 export function DashboardViewNav({ current }: { current: "overview" | "planning" }): React.ReactNode {
   return (
@@ -143,7 +143,7 @@ export function BudgetPlanningView({ data }: { data: BudgetPlanningPageData }): 
                         <div>
                           {row.categoryId ? (
                             <Link
-                              className="font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                              className="inline-flex min-h-10 items-center font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                               href={buildBudgetPlanningHref({
                                 ...data.filters,
                                 categoryId: row.categoryId,
