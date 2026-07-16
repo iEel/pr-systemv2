@@ -3,24 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-
-const labels: Record<string, string> = {
-  dashboard: "Dashboard",
-  pr: "PR Documents",
-  new: "Create PR",
-  edit: "Edit PR",
-  templates: "Templates",
-  reports: "Reports",
-  masters: "Master Data",
-  companies: "Company / Branch Master",
-  budgets: "Budget IT",
-  "pr-categories": "PR Categories",
-  settings: "Settings",
-  users: "Users / Roles",
-  "running-numbers": "Running Number Settings",
-  "audit-logs": "Audit Logs",
-  "upload-signed": "Upload Signed Document",
-};
+import { getBreadcrumbLabel } from "@/lib/breadcrumbs";
 
 export function Breadcrumbs() {
   const pathname = usePathname();
@@ -37,7 +20,7 @@ export function Breadcrumbs() {
       </Link>
       {segments.map((segment, index) => {
         const href = `/${segments.slice(0, index + 1).join("/")}`;
-        const label = labels[segment] ?? (segment.startsWith("pr-") ? "PR Detail" : segment);
+        const label = getBreadcrumbLabel(segments, index);
         const current = index === segments.length - 1;
 
         return (
