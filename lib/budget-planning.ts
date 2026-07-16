@@ -11,6 +11,35 @@ export type NormalizedBudgetPlanningFilters = {
   categoryId: string;
 };
 
+export const INCLUDED_ACTUAL_STATUSES = ["GENERATED", "PRINTED", "SIGNED"] as const;
+const INCLUDED_ACTUAL_STATUS_SET = new Set<string>(INCLUDED_ACTUAL_STATUSES);
+
+export type BudgetPlanningYearOption = { label: string; value: string };
+
+export function buildBudgetPlanningYearOptions({
+  availableYears,
+  currentYear,
+  selectedYear,
+}: {
+  availableYears: Array<number | string>;
+  currentYear: number;
+  selectedYear: number;
+}): BudgetPlanningYearOption[] {
+  const years = new Set<number>([currentYear, selectedYear]);
+  for (const value of availableYears) {
+    const year = Number(value);
+    if (Number.isInteger(year) && year >= 2000 && year <= 2100) years.add(year);
+  }
+
+  return [...years]
+    .filter((year) => Number.isInteger(year) && year >= 2000 && year <= 2100)
+    .sort((left, right) => right - left)
+    .map((year) => ({
+      label: year === currentYear ? `${year} — ปีปัจจุบัน` : String(year),
+      value: String(year),
+    }));
+}
+
 export function normalizeBudgetPlanningFilters(
   input: BudgetPlanningFiltersInput = {},
   now = new Date(),
@@ -212,7 +241,6 @@ export type BudgetPlanningViewModel = {
   recurringItemRows: BudgetPlanningRecurringItemRow[];
 };
 
-const INCLUDED_ACTUAL_STATUSES = new Set(["GENERATED", "PRINTED", "SIGNED"]);
 const UNCATEGORIZED_KEY = "__not_categorized__";
 
 function finiteNumber(value: BudgetPlanningNumericValue) {
@@ -345,7 +373,7 @@ export function buildBudgetPlanningViewModel({
     .filter((record) => {
       const documentDate = new Date(record.documentDate);
       return (
-        INCLUDED_ACTUAL_STATUSES.has(record.status) &&
+        INCLUDED_ACTUAL_STATUS_SET.has(record.status) &&
         Number.isFinite(documentDate.getTime()) &&
         documentDate >= range.gte &&
         documentDate < range.lt &&

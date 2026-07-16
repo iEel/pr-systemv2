@@ -2,16 +2,20 @@ import type { Prisma } from "@prisma/client";
 
 import {
   buildBudgetPlanningDateRange,
+  buildBudgetPlanningYearOptions,
   buildBudgetPlanningViewModel,
+  INCLUDED_ACTUAL_STATUSES,
   normalizeBudgetPlanningFilters,
   type BudgetPlanningFiltersInput,
   type BudgetPlanningViewModel,
+  type BudgetPlanningYearOption,
 } from "./budget-planning";
 import { prisma } from "@/lib/prisma";
 
 export type BudgetPlanningFilterOption = { label: string; value: string };
 
 export type BudgetPlanningPageData = BudgetPlanningViewModel & {
+  baseYears: BudgetPlanningYearOption[];
   companies: BudgetPlanningFilterOption[];
   categories: BudgetPlanningFilterOption[];
 };
@@ -20,7 +24,7 @@ export async function getBudgetPlanningPageData(
   input: BudgetPlanningFiltersInput = {},
 ): Promise<BudgetPlanningPageData> {
   const requestedFilters = normalizeBudgetPlanningFilters(input);
-  const [companyRecords, categoryRecords] = await Promise.all([
+  const [companyRecords, categoryRecords, yearRecords] = await Promise.all([
     prisma.company.findMany({
       orderBy: { displayName: "asc" },
       select: { displayName: true, id: true, isActive: true },
@@ -32,6 +36,12 @@ export async function getBudgetPlanningPageData(
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       select: { code: true, id: true, isActive: true, name: true },
     }),
+    prisma.$queryRaw<Array<{ baseYear: number }>>`
+      SELECT DISTINCT YEAR([documentDate]) AS [baseYear]
+      FROM [dbo].[PurchaseRequest]
+      WHERE [status] IN (${INCLUDED_ACTUAL_STATUSES[0]}, ${INCLUDED_ACTUAL_STATUSES[1]}, ${INCLUDED_ACTUAL_STATUSES[2]})
+      ORDER BY [baseYear] DESC
+    `,
   ]);
   const filters = {
     ...requestedFilters,
@@ -91,6 +101,11 @@ export async function getBudgetPlanningPageData(
 
   return {
     ...buildBudgetPlanningViewModel({ actualRecords, filters, recurringRecords }),
+    baseYears: buildBudgetPlanningYearOptions({
+      availableYears: yearRecords.map(({ baseYear }) => baseYear),
+      currentYear: new Date().getFullYear(),
+      selectedYear: filters.baseYear,
+    }),
     companies: [
       { label: "ทุกบริษัท", value: "All" },
       ...companyRecords.map((company) => ({

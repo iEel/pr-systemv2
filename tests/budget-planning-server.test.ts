@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+
+const serverSource = readFileSync("lib/budget-planning.server.ts", "utf8");
 
 const mocks = vi.hoisted(() => ({
   prisma: {
+    $queryRaw: vi.fn(),
     company: { findMany: vi.fn() },
     purchaseRequest: { findMany: vi.fn() },
     purchaseRequestCategory: { findMany: vi.fn() },
@@ -28,6 +32,7 @@ const item = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.prisma.$queryRaw.mockResolvedValue([]);
   mocks.prisma.purchaseRequest.findMany.mockResolvedValue([]);
   mocks.prisma.recurringPurchaseRequestSchedule.findMany.mockResolvedValue([]);
   mocks.prisma.company.findMany.mockResolvedValue([]);
@@ -35,6 +40,31 @@ beforeEach(() => {
 });
 
 describe("getBudgetPlanningPageData", () => {
+  test("returns qualifying Actual PR years plus the current year and selected fallback", async () => {
+    mocks.prisma.$queryRaw.mockResolvedValue([
+      { baseYear: 2024 },
+      { baseYear: 2022 },
+    ]);
+
+    const result = await getBudgetPlanningPageData({ year: 2023 });
+    const currentYear = new Date().getFullYear();
+
+    expect(result.baseYears).toEqual(expect.arrayContaining([
+      { label: `${currentYear} — ปีปัจจุบัน`, value: String(currentYear) },
+      { label: "2024", value: "2024" },
+      { label: "2023", value: "2023" },
+      { label: "2022", value: "2022" },
+    ]));
+    expect(mocks.prisma.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  test("queries distinct document years using the approved Actual status list", () => {
+    expect(serverSource).toContain("SELECT DISTINCT YEAR([documentDate]) AS [baseYear]");
+    expect(serverSource).toContain("INCLUDED_ACTUAL_STATUSES[0]");
+    expect(serverSource).toContain("INCLUDED_ACTUAL_STATUSES[1]");
+    expect(serverSource).toContain("INCLUDED_ACTUAL_STATUSES[2]");
+  });
+
   test("normalizes raw filters once and applies them to both detail queries", async () => {
     mocks.prisma.company.findMany.mockResolvedValue([
       { displayName: "Alpha", id: "company_a", isActive: true },

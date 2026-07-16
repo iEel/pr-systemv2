@@ -3,12 +3,38 @@ import {
   buildBudgetPlanningDateRange,
   buildBudgetPlanningExportHref,
   buildBudgetPlanningHref,
+  buildBudgetPlanningYearOptions,
   buildBudgetPlanningViewModel,
   normalizeBudgetPlanningFilters,
   type BudgetPlanningActualRecord,
   type BudgetPlanningItemRecord,
   type BudgetPlanningRecurringRecord,
 } from "../lib/budget-planning";
+
+describe("budget planning year options", () => {
+  test("deduplicates qualifying years, includes the current year, and sorts newest first", () => {
+    expect(buildBudgetPlanningYearOptions({
+      availableYears: [2024, "2025", 2024, "invalid"],
+      currentYear: 2026,
+      selectedYear: 2026,
+    })).toEqual([
+      { label: "2026 — ปีปัจจุบัน", value: "2026" },
+      { label: "2025", value: "2025" },
+      { label: "2024", value: "2024" },
+    ]);
+  });
+
+  test("retains a valid selected fallback and rejects invalid year records", () => {
+    expect(buildBudgetPlanningYearOptions({
+      availableYears: [1999, 2025.5, 2101, Number.NaN],
+      currentYear: 2026,
+      selectedYear: 2023,
+    })).toEqual([
+      { label: "2026 — ปีปัจจุบัน", value: "2026" },
+      { label: "2023", value: "2023" },
+    ]);
+  });
+});
 
 describe("budget planning filters", () => {
   test("defaults invalid and empty inputs and derives forecast year", () => {
