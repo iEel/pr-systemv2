@@ -78,6 +78,7 @@ export type RecurringScheduleInput = {
 };
 
 export type RecurringScheduleFormValue = Omit<RecurringScheduleInput, "items"> & {
+  sourcePurchaseRequestLabel: string;
   items: Array<{
     rowType: DraftLineItemRowType;
     accountCode: string;
@@ -98,6 +99,7 @@ export type RecurringScheduleReferenceLookup = {
 type RecurringScheduleSourceRecord = {
   [key: string]: unknown;
   id: string;
+  prNo?: string | null;
   branchId: string;
   categoryId: string | null;
   departmentId: string;
@@ -435,6 +437,7 @@ export function mapSourcePrToScheduleForm(record: RecurringScheduleSourceRecord,
   return {
     name: "",
     sourcePurchaseRequestId: record.id,
+    sourcePurchaseRequestLabel: record.prNo || "Draft pending",
     branchId: record.branchId,
     categoryId: record.categoryId || "",
     departmentId: record.departmentId,
@@ -621,6 +624,7 @@ export async function getRecurringScheduleDetail(id: string): Promise<RecurringS
       renewalMonth: record.renewalMonth,
       responsibleUserId: record.responsibleUserId,
       sourcePurchaseRequestId: record.sourcePurchaseRequestId || "",
+      sourcePurchaseRequestLabel: record.sourcePurchaseRequest?.prNo || "Draft pending",
     },
     runs: record.runs.map((run) => ({
       errorMessage: run.errorMessage,

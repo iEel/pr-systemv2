@@ -266,6 +266,7 @@ test("maps only editable source PR snapshot data in item order", () => {
   expect(value).toEqual({
     name: "",
     sourcePurchaseRequestId: "pr_source",
+    sourcePurchaseRequestLabel: "PR-2026-0001",
     branchId: "br_hq",
     categoryId: "cat_renewal",
     departmentId: "dep_it",
@@ -282,4 +283,24 @@ test("maps only editable source PR snapshot data in item order", () => {
       { rowType: "ITEM", accountCode: "", description: "Support", quantity: 1, unitCost: 25000 },
     ],
   });
+});
+
+test("uses Draft pending when a source PR has no number", () => {
+  const value = mapSourcePrToScheduleForm(
+    {
+      id: "pr_draft",
+      prNo: null,
+      branchId: "br_hq",
+      categoryId: "cat_renewal",
+      departmentId: "dep_it",
+      divisionId: null,
+      purpose: "Renew",
+      purchaseMethod: "Procurement",
+      remark: null,
+      items: [],
+    },
+    { leadDays: 30, renewalDay: 15, renewalMonth: 1 },
+  );
+
+  expect(value.sourcePurchaseRequestLabel).toBe("Draft pending");
 });
